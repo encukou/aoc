@@ -40,17 +40,17 @@ def num_paths(path_so_far, current_cave, can_revisit_small=False):
     for next_cave in maze[current_cave]:
         if next_cave not in path_so_far or next_cave.isupper():
             count += num_paths(
-                path_so_far + [current_cave],
+                path_so_far | {current_cave},
                 next_cave,
                 can_revisit_small=can_revisit_small,
             )
         elif can_revisit_small and next_cave != 'start':
             count += num_paths(
-                path_so_far + [current_cave],
+                path_so_far | {current_cave},
                 next_cave,
                 can_revisit_small=False,
             )
     return count
 
-print(num_paths([], 'start', can_revisit_small=False))
-print(num_paths([], 'start', can_revisit_small=True))
+print(num_paths(set(), 'start'))
+print(num_paths(set(), 'start', can_revisit_small=True))
