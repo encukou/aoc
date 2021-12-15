@@ -2,13 +2,13 @@ import heapq
 
 import numpy
 
-numpy.set_printoptions(threshold=100*1000, linewidth=420)
-
 with open('input.txt') as input_file:
     cave = numpy.array([
         [int(c) for c in line.strip()]
         for line in input_file
     ])
+cave = numpy.hstack([(cave - 1 + i) % 9 + 1 for i in range(5)])
+cave = numpy.vstack([(cave - 1 + i) % 9 + 1 for i in range(5)])
 cave = numpy.pad(cave, 1, constant_values=-1)
 
 start = 1, 1
@@ -27,6 +27,8 @@ def cheap_estimate(pos):
 tasks = [(cheap_estimate(start), start)]
 print(len(tasks))
 
+print_counter = 0
+
 while tasks:
     _estimate, pos = heapq.heappop(tasks)
     cost = best_costs[pos]
@@ -35,10 +37,16 @@ while tasks:
         if cave[next_pos] == -1:
             continue
         next_cost = cost + cave[next_pos]
-        print(next_pos, next_cost, len(tasks))
         if best_costs[next_pos] == -1 or best_costs[next_pos] > next_cost:
             best_costs[next_pos] = next_cost
             heapq.heappush(tasks, (cheap_estimate(next_pos), next_pos))
 
-    print(best_costs)
-    print(len(tasks))
+    # Printing the arrays is slow, just do it every once in a while
+    print_counter += 1
+    if print_counter % 1000 == 0:
+        print(best_costs[1])
+        print(best_costs[-2])
+        print(len(tasks), 'paths in progress')
+
+print(best_costs)
+print(best_costs[-2, -2])
