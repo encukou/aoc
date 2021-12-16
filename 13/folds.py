@@ -21,9 +21,9 @@ def draw(dots):
     for y in range(maxy+1):
         for x in range(maxx+1):
             if (x, y) in dots:
-                print(end='# ')
+                print(end='██')
             else:
-                print(end='. ')
+                print(end='  ')
         print()
 
 print(dots)
@@ -41,9 +41,13 @@ def fold(dots, instruction):
         new_dots.add((x, y))
     return new_dots
 
+part1 = None
 for instruction in instructions:
     dots = fold(dots, instruction)
+    print()
     draw(dots)
     print('Number of dots:', len(dots))
+    if part1 is None:
+        part1 = len(dots)
 
-    break
+print('Part 1:', part1)
