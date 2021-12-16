@@ -1,4 +1,6 @@
 import dataclasses
+import operator
+from functools import reduce
 
 @dataclasses.dataclass
 class Packet:
@@ -21,6 +23,30 @@ class Packet:
             for child in self.children:
                 result += child.get_version_sum()
         return result
+
+    def evaluate(self):
+        if self.children is None:
+            return self.value
+        _eval_children = (p.evaluate() for p in self.children)
+        match self.type:
+            case 0:
+                return sum(_eval_children)
+            case 1:
+                return reduce(operator.mul, _eval_children)
+            case 2:
+                return min(_eval_children)
+            case 3:
+                return max(_eval_children)
+            case 4:
+                return self.value
+            case 5:
+                return int(next(_eval_children) > next(_eval_children))
+            case 6:
+                return int(next(_eval_children) < next(_eval_children))
+            case 7:
+                return int(next(_eval_children) == next(_eval_children))
+            case bad_type:
+                raise ValueError(bad_type)
 
 class Parser:
     def __init__(self, source):
@@ -92,9 +118,17 @@ print('vs', parse('C0015000016115A2E0802F182340').get_version_sum())
 parse('A0016C880162017C3686B18A3D4780').dump()
 print('vs', parse('A0016C880162017C3686B18A3D4780').get_version_sum())
 
+assert parse('C200B40A82').evaluate() == 3
+assert parse('04005AC33890').evaluate() == 54
+assert parse('880086C3E88112').evaluate() == 7
+assert parse('CE00C43D881120').evaluate() == 9
+assert parse('D8005AC2A8F0').evaluate() == 1
+assert parse('F600BC2D8F').evaluate() == 0
+assert parse('9C005AC2F8F0').evaluate() == 0
+assert parse('9C0141080250320F1802104A08').evaluate() == 1
+
 with open('data.txt') as file:
     packet = parse(file.read().strip())
 packet.dump()
 print('Part 1:', packet.get_version_sum())
-
-
+print('Part 2:', packet.evaluate())
