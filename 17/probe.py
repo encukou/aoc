@@ -11,25 +11,27 @@ print(target_xrange, target_yrange)
 
 def calc_throw(xspeed, yspeed):
     xpos = ypos = 0
+    coords = []
     while True:
-        yield xpos, ypos
+        coords.append((xpos, ypos))
         xpos += xspeed
         ypos += yspeed
         if xspeed > 0:
             xspeed -= 1
         yspeed -= 1
         if xpos > target_xrange.stop:
-            return False
+            return coords, False
         elif yspeed < 0 and ypos < target_yrange.start:
-            return False
+            return coords, False
         elif xpos in target_xrange and ypos in target_yrange:
-            yield xpos, ypos
-            return True
+            coords.append((xpos, ypos))
+            return coords, True
 
 
 def draw_throw(xspeed, yspeed):
-    print(f'{xspeed},{yspeed}:')
-    coords = list(calc_throw(xspeed, yspeed))
+    coords, did_hit = list(calc_throw(xspeed, yspeed))
+    print(f'{xspeed},{yspeed} {"hits" if did_hit else "misses"}:')
+    coords = list(coords)
     ymin = min([0, target_yrange.start, min(y for x, y in coords)])
     ymax = max([0, target_yrange.stop, max(y for x, y in coords)])
     xmin = min(0, min(x for x, y in coords))
@@ -60,5 +62,14 @@ draw_throw(6, 9)
 # The xspeed is I guessed experimentally in a few tries :)
 part1_params = 22, -target_yrange.start-1
 draw_throw(*part1_params)
-part1_coords = calc_throw(*part1_params)
+part1_coords, did_hit = calc_throw(*part1_params)
 print('Part 1:', max(y for x, y in part1_coords))
+
+num_hits = 0
+for xspeed in range(0, target_xrange.stop):
+    for yspeed in range(target_yrange.start-1, -target_yrange.start+1):
+        coords, did_hit = calc_throw(xspeed, yspeed)
+        print(f'{xspeed},{yspeed} {"hits" if did_hit else "misses"}')
+        if did_hit:
+            num_hits += 1
+print('Part 2:', num_hits)
