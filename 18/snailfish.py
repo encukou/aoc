@@ -41,17 +41,14 @@ class SnailfishPair:
         if self.depth == 1:
             self.parent.set(self.pos, SnailfishScalar(0))
             self.parent.fixup()
-            self.parent.parent.parent.parent.dump()
             if (r := self.get_right_neighbor_scalar()) is not None:
                 r.add(self.a.magnitude)
             if (l := self.get_left_neighbor_scalar()) is not None:
                 l.add(self.b.magnitude)
             return True
         if self.a.depth >= self.b.depth:
-            print(f'{self} exploding a')
             return self.a.explode()
         else:
-            print(f'{self} exploding b')
             return self.b.explode()
 
     def set(self, pos, value):
@@ -106,7 +103,6 @@ class SnailfishScalar:
         print(' ' * depth, f'= {self.magnitude} {" !"[self.splittable]}')
 
     def add(self, magnitude):
-        print('add', self, magnitude)
         self.magnitude += magnitude
         self.fixup()
 
@@ -198,7 +194,6 @@ def parse_and_sum(lines):
     lines = iter(lines)
     result = parse(next(lines))
     for line in lines:
-        print(f'Adding {result} + {line}')
         result += parse(line)
         while result.reduce_step():
             pass
