@@ -1,3 +1,7 @@
+from functools import reduce
+from operator import add
+import itertools
+
 class SnailfishPair:
     def __init__(self, a, b):
         self.a = a
@@ -242,7 +246,7 @@ assert parse('[[[[1,1],[2,2]],[3,3]],[4,4]]').magnitude == 445
 assert parse('[[[[3,0],[5,3]],[4,4]],[5,5]]').magnitude == 791
 assert parse('[[[[5,0],[7,4]],[5,5]],[6,6]]').magnitude == 1137
 assert parse('[[[[8,7],[7,7]],[[8,6],[7,7]]],[[[0,7],[6,6]],[8,7]]]').magnitude == 3488
-assert parse_and_sum('''
+example_lines = '''
     [[[0,[5,8]],[[1,7],[9,6]]],[[4,[1,2]],[[1,4],2]]]
     [[[5,[2,8]],4],[5,[[9,9],0]]]
     [6,[[[6,2],[5,6]],[[7,6],[4,7]]]]
@@ -253,8 +257,23 @@ assert parse_and_sum('''
     [[9,3],[[9,9],[6,[4,9]]]]
     [[2,[[7,7],7]],[[5,8],[[9,3],[0,2]]]]
     [[[[5,2],5],[8,[3,7]]],[[5,[7,5]],[4,4]]]
-'''.strip().splitlines()).magnitude == 4140
+'''.strip().splitlines()
+assert parse_and_sum(example_lines).magnitude == 4140
 
 with open('data.txt') as f:
-    print('Part 1:', parse_and_sum(f).magnitude)
+    input_numbers = list(f)
 
+print('Part 1:', parse_and_sum(input_numbers).magnitude)
+
+def largest_pairwise_magnitude(lines):
+    largest_magnitude = 0
+    for pair in itertools.permutations(lines, 2):
+        magnitude = parse_and_sum(pair).magnitude
+        if magnitude > largest_magnitude:
+            largest_magnitude = magnitude
+            print('new largest magnitude:', magnitude, [str(n) for n in pair])
+    return largest_magnitude
+
+assert largest_pairwise_magnitude(example_lines) == 3993
+
+print('Part 2:', largest_pairwise_magnitude(input_numbers))
