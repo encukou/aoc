@@ -1,4 +1,5 @@
 import itertools
+import random
 from dataclasses import dataclass
 from pprint import pprint
 
@@ -45,8 +46,7 @@ pprint(permutations)
 pprint(known_beacons)
 pprint(unknown_scanners)
 
-def try_match(unknown_beacons, permutation, offset):
-    print(unknown_beacons, permutation, offset)
+def try_match(unknown_beacons):
     for known_beacon in known_beacons:
         for permutation in permutations:
             for unknown_beacon in unknown_beacons:
@@ -70,14 +70,16 @@ def try_match(unknown_beacons, permutation, offset):
                 #pprint(matched)
     return None, None
 
+scanner_positions = []
+
 while unknown_scanners:
     pprint(known_beacons)
     pprint(unknown_scanners)
+    print(f'{len(unknown_scanners)} scanners left: {sorted(unknown_scanners)}')
     for unknown_id, unknown_scanner in unknown_scanners.items():
+        print(f'trying scanner {unknown_id}')
         for known_id, (permutation, offset) in known_scanner_ids.items():
-            permutation, offset = try_match(
-                unknown_scanner, permutation, offset,
-            )
+            permutation, offset = try_match(unknown_scanner)
             if permutation:
                 break
         else:
@@ -87,10 +89,23 @@ while unknown_scanners:
         raise Exception('could not match anything')
     discovered_beacons = unknown_scanners.pop(unknown_id)
     print(f'Adding scanner {unknown_id}!')
+    scanner_positions.append(offset)
     for discovered_beacon in discovered_beacons:
         adjusted = permute_add(discovered_beacon, permutation, offset)
         known_beacons.setdefault(adjusted, set()).add(unknown_id)
 
-    pprint(sorted(known_beacons.items()))
+    # Randomize
+    items = list(unknown_scanners.items())
+    random.shuffle(items)
+    unknown_scanners = dict(items)
 
 print('Part 1:', len(known_beacons))
+
+longest_distance = 0
+for s1, s2 in itertools.combinations(scanner_positions, 2):
+    distance = sum(abs(c1-c2) for c1, c2 in zip(s1, s2))
+    if distance > longest_distance:
+        longest_distance = distance
+
+print('Part 2:', longest_distance)
+
