@@ -58,3 +58,16 @@ for i in range(2):
     print('outside:', outside)
 
 print('Part 1:', result.sum())
+
+for i in range(2, 50):
+    padded = numpy.pad(image, 2, constant_values=outside)
+    result = numpy.zeros((image.shape[0]+2, image.shape[1]+2), dtype=int)
+    for shift, slices in indices:
+        result += padded[slices] * (1 << (8-shift))
+    result = rule[result]
+    image = result
+    print_image(f'After iteration {i+1}:', image)
+    outside = rule[outside * 0b111111111]
+    print('outside:', outside)
+
+print('Part 2:', result.sum())
