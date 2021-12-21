@@ -1,3 +1,4 @@
+import collections
 import re
 
 positions = []
@@ -38,3 +39,36 @@ winner, new_positions, scores, rolls = play(positions, DeterministicDiracDie())
 print(f'{winner} wins, positions: {new_positions}, scores: {scores}, rolls: {rolls}')
 
 print('Part 1:', rolls * scores[1-winner])
+
+three_roll_outcome_counts = tuple(collections.Counter(
+    a + b + c
+    for a in range(1, 4)
+    for b in range(1, 4)
+    for c in range(1, 4)
+).items())
+print(three_roll_outcome_counts)
+
+universes = collections.OrderedDict({
+    (*positions, 0, 0, 0): 1,
+})
+wins = [0, 0]
+
+while universes:
+    universe, count = universes.popitem(last=False)
+    print(universe, wins, len(universes), count)
+    for roll_sum, roll_count in three_roll_outcome_counts:
+        new_universe = list(universe)
+        player_number = new_universe[-1]
+        new_universe[player_number] += roll_sum
+        new_universe[player_number] %= 10
+        new_universe[player_number+2] += new_universe[player_number] + 1
+        new_universe[-1] = 1 - new_universe[-1]
+        if new_universe[player_number+2] >= 21:
+            wins[player_number] += count * roll_count
+        else:
+            new_universe = tuple(new_universe)
+            universes.setdefault(new_universe, 0)
+            universes[new_universe] += count * roll_count
+
+print(wins)
+print('Part 2:', max(wins))
