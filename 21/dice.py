@@ -1,4 +1,5 @@
 import collections
+import heapq
 import re
 
 positions = []
@@ -48,27 +49,48 @@ three_roll_outcome_counts = tuple(collections.Counter(
 ).items())
 print(three_roll_outcome_counts)
 
-universes = collections.OrderedDict({
-    (*positions, 0, 0, 0): 1,
-})
+universes = [(0, 0, 0, *positions, 0)]
+universe_counts = {(0, 0, *positions, 0): 1}
 wins = [0, 0]
 
+print_counter = 0
 while universes:
-    universe, count = universes.popitem(last=False)
-    print(universe, wins, len(universes), count)
+    current_entry = heapq.heappop(universes)
+    total_score = current_entry[0]
+    current_universe = (*current_entry[1:], )
+    count = universe_counts.pop(current_universe)
+    #print('<-', current_universe, count)
+    if print_counter % 2021 == 0:
+        print(
+            total_score,
+            current_universe,
+            [len(str(w)) for w in wins],
+            len(universes),
+            count,
+        )
+        print_counter = 0
+    print_counter += 1
     for roll_sum, roll_count in three_roll_outcome_counts:
-        new_universe = list(universe)
+        new_universe = list(current_universe)
         player_number = new_universe[-1]
-        new_universe[player_number] += roll_sum
-        new_universe[player_number] %= 10
-        new_universe[player_number+2] += new_universe[player_number] + 1
-        new_universe[-1] = 1 - new_universe[-1]
-        if new_universe[player_number+2] >= 21:
+        new_universe[player_number+2] += roll_sum
+        new_universe[player_number+2] %= 10
+        new_universe[player_number] += new_universe[player_number+2] + 1
+        new_universe[-1] = 1 - player_number
+        if new_universe[player_number] >= 21:
             wins[player_number] += count * roll_count
+            #print('!!')
         else:
-            new_universe = tuple(new_universe)
-            universes.setdefault(new_universe, 0)
-            universes[new_universe] += count * roll_count
+            new_tuple = tuple(new_universe)
+            new_count = count * roll_count
+            if new_tuple in universe_counts:
+                universe_counts[new_tuple] += new_count
+                #print('++', new_tuple, '*', new_count)
+            else:
+                universe_counts[new_tuple] = new_count
+                total_score = new_universe[0] + new_universe[1]
+                heapq.heappush(universes, (total_score, *new_tuple))
+                #print('->', new_tuple, '*', new_count)
 
 print(wins)
 print('Part 2:', max(wins))
