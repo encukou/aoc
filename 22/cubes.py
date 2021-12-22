@@ -1,4 +1,5 @@
 import re
+import bisect
 
 import numpy
 
@@ -20,9 +21,9 @@ with open('data.txt') as f:
         )
         instructions.append((
             tr[match[1]],
-            (int(match[2])-minimum, int(match[3])-minimum),
-            (int(match[4])-minimum, int(match[5])-minimum),
-            (int(match[6])-minimum, int(match[7])-minimum),
+            (int(match[2]), int(match[3])),
+            (int(match[4]), int(match[5])),
+            (int(match[6]), int(match[7])),
         ))
 
 state = numpy.zeros(
@@ -32,9 +33,49 @@ state = numpy.zeros(
 print(state.shape)
 
 for onoff, *coords in instructions:
-    for a, b in coords:
-        assert a<=b
-    state[tuple(slice(a, b+1) for a, b in coords)] = onoff
+    state[tuple(slice(a-minimum, b+1-minimum) for a, b in coords)] = onoff
 
 print('Part 1:', state.sum())
-# 590784
+
+split_lines = [
+    [],
+    [],
+    [],
+]
+
+def axis_index(index, axis):
+    return (*([slice(None, None)] * axis), index, ...)
+
+def split(split_lines, axis, split_point):
+    pos = bisect.bisect_left(split_lines, split_point)
+    if pos == len(split_lines) or split_lines[pos] != split_point:
+        split_lines.insert(pos, split_point)
+
+for onoff, *coords in instructions:
+    print(onoff, coords)
+    for axis, (a, b) in enumerate(coords):
+        split(split_lines[axis], axis, a)
+        split(split_lines[axis], axis, b+1)
+
+state = numpy.zeros(tuple(len(lines) for lines in split_lines), dtype=int)
+
+for i, line in enumerate(split_lines):
+    print('i', i, line)
+
+for onoff, *coords in instructions:
+    print('turn', onoff, coords)
+    slices = []
+    for axis, (a, b) in enumerate(coords):
+        slices.append(slice(
+            bisect.bisect_left(split_lines[axis], a),
+            bisect.bisect_right(split_lines[axis], b),
+        ))
+    state[tuple(slices)] = onoff
+
+for axis in range(3):
+    poss = split_lines[axis]
+    for pos, (curr_line, next_line) in enumerate(zip(poss, poss[1:])):
+        state[axis_index(pos, axis)] *= next_line - curr_line
+        print('m', axis, pos, next_line, curr_line, '*', next_line - curr_line)
+
+print('Part 2:', state.sum())
