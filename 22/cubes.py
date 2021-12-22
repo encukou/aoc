@@ -38,24 +38,23 @@ for onoff, *coords in instructions:
 print('Part 1:', state.sum())
 
 split_lines = [
-    [],
-    [],
-    [],
+    set(),
+    set(),
+    set(),
 ]
-
-def axis_index(index, axis):
-    return (*([slice(None, None)] * axis), index, ...)
 
 def split(split_lines, axis, split_point):
     pos = bisect.bisect_left(split_lines, split_point)
     if pos == len(split_lines) or split_lines[pos] != split_point:
-        split_lines.insert(pos, split_point)
+        split_lines[axis].add(pos, split_point)
 
 for onoff, *coords in instructions:
     print(onoff, coords)
     for axis, (a, b) in enumerate(coords):
-        split(split_lines[axis], axis, a)
-        split(split_lines[axis], axis, b+1)
+        split_lines[axis].add(a)
+        split_lines[axis].add(b+1)
+
+split_lines = [sorted(list(l)) for l in split_lines]
 
 state = numpy.zeros(tuple(len(lines) for lines in split_lines), dtype=int)
 
@@ -71,6 +70,9 @@ for onoff, *coords in instructions:
             bisect.bisect_right(split_lines[axis], b),
         ))
     state[tuple(slices)] = onoff
+
+def axis_index(index, axis):
+    return (*([slice(None, None)] * axis), index, ...)
 
 for axis in range(3):
     poss = split_lines[axis]
