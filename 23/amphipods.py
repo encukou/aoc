@@ -1,4 +1,3 @@
-import dataclasses
 import itertools
 import heapq
 
@@ -7,87 +6,67 @@ import numpy
 with open('data.txt') as f:
     lines = [line.rstrip() for line in f]
 
+if True:
+    # Part 2:
+    lines.insert(3, "  #D#C#B#A#")
+    lines.insert(4, "  #D#B#A#C#")
+
 for i, line in enumerate(lines):
     lines[i] = line.ljust(len(lines[0]))
-
-@dataclasses.dataclass
-class Tile:
-    connections: list[tuple[int, int]]
-    can_stop: bool
-    goal_for: str|None
 
 neighbor_coords = [(0,1), (0,-1), (1,0), (-1,0)]
 energy_costs = {'A': 1, 'B': 10, 'C': 100, 'D': 1000}
 
-goal_cols = {}
-goal_rows = set()
+room_cols = {}
+room_rows = set()
 
-tiles = {}
+valid_positions = set()
 amphipods = {}
 for r, line in enumerate(lines):
     goals = iter('ABCD')
     for c, char in enumerate(line):
         if char in ' #':
             continue
-        connections = []
-        for dr, dc in neighbor_coords:
-            if lines[r + dr][c + dc] != '#':
-                connections.append((r + dr, c + dc))
         if char == '.':
-            goal_for = None
             can_stop = all(line[c] in ' .#' for line in lines)
+            corridor_row = r
         else:
-            goal_for = next(goals)
-            goal_cols[goal_for] = c
-            goal_rows.add(r)
+            room_cols[next(goals)] = c
+            room_rows.add(r)
             can_stop = True
             amphipods[r, c] = char
-        tiles[r, c] = Tile(
-            connections,
-            can_stop,
-            goal_for,
-        )
+        valid_positions.add((r, c))
 
-goal_rows = sorted(goal_rows)
+room_rows = sorted(room_rows)
+room_cols_v = set(room_cols.values())
 
 def cheap_score(amphipods):
     score = 0
     for (r, c), a in amphipods.items():
         steps_needed = 0
-        if c == goal_cols[a]:
-            if r == goal_rows[-1]:
+        if c == room_cols[a]:
+            if all(amphipods.get((R, c)) ==a for R in room_rows if R > r):
                 # Already in place
                 continue
-            elif r == goal_rows[0]:
-                apmhipod_in_bottom_goal = amphipods.get((goal_rows[-1], c))
-                if apmhipod_in_bottom_goal == a:
-                    # Both already in place
-                    continue
-                elif apmhipod_in_bottom_goal is None:
-                    # Will need to go down one more step
-                    steps_needed = 1
-                else:
-                    # Will need to go out and then back down
-                    steps_needed = 5
             else:
-                # Will need to go down
-                steps_needed = 1
+                # Will need to go out and then back down
+                steps_needed = 3 + abs(r - corridor_row)
         else:
             # Will need to go out, sideways and down
-            steps_needed = abs(r-1) + abs(c - goal_cols[a]) + 1
+            steps_needed = abs(r-corridor_row) + abs(c - room_cols[a]) + 1
         score += steps_needed * energy_costs[a]
     return score
 
-def print_map(tiles, amphipods):
+def print_map(amphipods):
     for r in range(len(lines)):
         for c in range(len(lines[0])):
             if amphipod := amphipods.get((r, c)):
                 print(amphipod, end='')
-            elif tile := tiles.get((r, c)):
-                if tile.can_stop:
-                    print('.', end='')
-                else:
+            elif (r, c) in valid_positions:
+                if c in room_cols:
                     print(' ', end='')
+                else:
+                    print('.', end='')
             else:
                 print('#', end='')
         if r == 1:
@@ -98,37 +77,66 @@ def print_map(tiles, amphipods):
 def get_state_key(amphipods):
     return tuple(sorted((a, rc) for rc, a in amphipods.items()))
 
-print_map(tiles, amphipods)
+print_map(amphipods)
 print(get_state_key(amphipods))
 
-def do_steps(state, a, r, c, banned_direction, energy):
-    energy += energy_costs[a]
-    for dr, dc in neighbor_coords:
-        if (dr, dc) == banned_direction:
-            continue
-        new_r = r + dr
-        new_c = c + dc
-        new_coords = new_r, new_c
-        if new_coords in state:
-            continue
-        tile = tiles.get(new_coords)
-        if tile is None:
-            continue
-        new_state = state.copy()
-        new_state[new_coords] = a
-        if tile.can_stop:
-            yield energy, new_state
-        yield from do_steps(state, a, new_r, new_c, (-dr, -dc), energy)
+def do_steps(state, a, r, c, energy):
+    steps = 0
+    # The amphipod can:
+    # 1. move out of a room into the hallway
+    # 2. move out of the hallway into a room
+    goal = room_cols.get(c)
+    if goal == a and all(amphipods.get((R, c)) == a for R in room_rows if R > r):
+        # Already in place; won't move further
+        return
+    # Must move out
+    if any(amphipods.get((R, c)) for R in room_rows if R < r):
+        # blocked!
+        return
+    out_steps = abs(r - corridor_row)
+    # Can move left or right along the corridor
+    for direction in 1, -1:
+        for distance in range(len(lines[0])):
+            new_c = c + distance * direction
+            if (corridor_row, new_c) not in valid_positions:
+                break
+            if (corridor_row, new_c) in state:
+                break
+            if new_c not in room_cols_v:
+                if out_steps:
+                    # Can stop here
+                    new_state = state.copy()
+                    new_state[corridor_row, new_c] = a
+                    yield (
+                        energy + (out_steps + distance) * energy_costs[a],
+                        new_state,
+                    )
+            elif room_cols[a] == new_c:
+                # Can move down
+                for R in reversed(room_rows):
+                    occupant = state.get((R, new_c))
+                    if occupant is None:
+                        new_state = state.copy()
+                        new_state[R, new_c] = a
+                        in_steps = abs(corridor_row - R)
+                        yield (
+                            energy
+                            + (out_steps + distance + in_steps)
+                                * energy_costs[a],
+                            new_state,
+                        )
+                    elif occupant != a:
+                        break
 
 def next_states(amphipods):
     for r, c in amphipods:
         state = amphipods.copy()
         a = state.pop((r, c))
-        yield from do_steps(state, a, r, c, None, 0)
+        yield from do_steps(state, a, r, c, 0)
 
 
 for energy, next_state in next_states(amphipods):
-    print_map(tiles, next_state)
+    print_map(next_state)
     print(energy)
 
 integers = itertools.count()
@@ -147,11 +155,11 @@ while to_explore:
     if print_counter > 1000:
         print_counter = 0
         print(len(to_explore), len(cheapest_paths), estimate)
-        print_map(tiles, amphipods)
+        print_map(amphipods)
     if estimate == energy:
         print()
-        print_map(tiles, amphipods)
-        print('Part 1:', energy)
+        print_map(amphipods)
+        print('Minimum energy:', energy)
         break
     for used_energy, next_amphipods in next_states(amphipods):
         next_energy = energy + used_energy
