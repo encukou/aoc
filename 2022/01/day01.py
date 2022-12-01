@@ -27,3 +27,5 @@ for line in data:
 
 print(cals_by_elf)
 print('part 1:', max(cals_by_elf))
+
+print('part 2:', sum(sorted(cals_by_elf)[-3:]))
