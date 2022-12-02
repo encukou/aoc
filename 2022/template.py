@@ -1,29 +1,13 @@
-from pathlib import Path
-import os
-SMALLDATA = 'SMALLDATA' in os.environ
+import sys
 
-data = """
-""".strip()
-if not SMALLDATA:
-    data = Path('input.txt').read_text()
-    ...
-
-data = data.splitlines()
+data = sys.stdin.read().splitlines()
 print(data)
 
 
 
-
-
-part1 = ...
-print('part 1:', part1)
-if SMALLDATA:
-    assert part1 == ...
+print('*** part 1:', ...)
 
 
 
 
-part2 = ...
-print('part 2:', part2)
-if SMALLDATA:
-    assert part2 == ...
+print('*** part 2:', ...)
