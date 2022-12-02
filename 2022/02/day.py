@@ -9,31 +9,26 @@ C Z
 """.strip()
 if not SMALLDATA:
     data = Path('input.txt').read_text()
-    ...
 
 data = data.splitlines()
 print(data)
 
-def get_score(my, their):
-    if my == their:
-        return 3
-    if my + their in {'RS', 'SP', 'PR'}:
-        return 6
-    return 0
+SYMBOLS = 'RPS'
 
-cipher = dict('AR BP CS XR YP ZS'.split())
+def get_outcome(my, their):
+    return (my - their + 1) % 3 * 3
+
+def get_score_and_log(my, their):
+    outcome = get_outcome(my, their)
+    print(f"{SYMBOLS[my]}/{SYMBOLS[their]} {my+1:+} {outcome:+}")
+    return my + 1 + outcome
 
 score = 0
-move_scores = {m:s for s, m in enumerate('RPS', start=1)}
 for row in data:
     their, my = row.split()
-    my = cipher[my]
-    their = cipher[their]
-    score += move_scores[my]
-    score += get_score(my, their)
-    print(my, their, score)
-
-print(get_score(*'SP'))
+    my = 'XYZ'.index(my)
+    their = 'ABC'.index(their)
+    score += get_score_and_log(my, their)
 
 part1 = score
 print('part 1:', part1)
@@ -45,17 +40,9 @@ score = 0
 move_scores = {m:s for s, m in enumerate('RPS', start=1)}
 for row in data:
     their, my = row.split()
-    their = cipher[their]
-    if my == 'X':
-        my = dict({'RS', 'SP', 'PR'})[their]
-    elif my == 'Y':
-        my = their
-    elif my == 'Z':
-        my = dict({'RP', 'SR', 'PS'})[their]
-    score += move_scores[my]
-    score += get_score(my, their)
-    print(my, their, score)
-
+    their = 'ABC'.index(their)
+    my = (their + 'XYZ'.index(my) - 1) % 3
+    score += get_score_and_log(my, their)
 
 
 part2 = score

@@ -6,6 +6,7 @@ data = """
 """.strip()
 if not SMALLDATA:
     data = Path('input.txt').read_text()
+    ...
 
 data = data.splitlines()
 print(data)
