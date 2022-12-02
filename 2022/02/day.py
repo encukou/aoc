@@ -32,7 +32,6 @@ for row in data:
     score += move_scores[my]
     score += get_score(my, their)
     print(my, their, score)
-    print('s',get_score(my, their))
 
 print(get_score(*'SP'))
 
@@ -42,8 +41,24 @@ if SMALLDATA:
     assert part1 == 15
 
 
+score = 0
+move_scores = {m:s for s, m in enumerate('RPS', start=1)}
+for row in data:
+    their, my = row.split()
+    their = cipher[their]
+    if my == 'X':
+        my = dict({'RS', 'SP', 'PR'})[their]
+    elif my == 'Y':
+        my = their
+    elif my == 'Z':
+        my = dict({'RP', 'SR', 'PS'})[their]
+    score += move_scores[my]
+    score += get_score(my, their)
+    print(my, their, score)
 
-part2 = ...
+
+
+part2 = score
 print('part 2:', part2)
 if SMALLDATA:
-    assert part2 == ...
+    assert part2 == 12
