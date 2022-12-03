@@ -4,8 +4,9 @@ data = sys.stdin.read().splitlines()
 print(data)
 
 # 0=rock, 1=paper, 2=scissors
-# N beats N+1 (mod 3)
-# N loses to N-1 (mod 3)
+# N loses to N+1 (with wrap-around, so 3=rock)
+# N beats N-1 (with wrap-around, so -1=scissors)
+# (wrap-around meand modulo 3)
 SYMBOLS = 'RPS'
 
 def get_outcome(my, their):
