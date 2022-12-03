@@ -23,8 +23,9 @@ if len(sys.argv) > 1:
     with open(sys.argv[1]) as f:
         for line in f:
             line = line.strip()
-            print(f'{CYAN}exp.{WHITE}{line[4:]}')
-            expected.add(line)
+            print(f'{CYAN}exp.{WHITE}{line[4:]}/{len(line)}')
+            if len(line) > 11:
+                expected.add(line)
 
 failing = False
 output = []

@@ -19,7 +19,7 @@ if not day_dir.exists() and is_advent_day:
     day_dir.joinpath('day.py').write_text(template)
     day_dir.joinpath('input.txt').write_text('')
     day_dir.joinpath('smallinput.txt').write_text('')
-    day_dir.joinpath('expected.txt').write_text('')
+    day_dir.joinpath('expected.txt').write_text('*** part 1: \n*** part 2: ')
 
 subprocess.run(
     [
