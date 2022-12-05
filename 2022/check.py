@@ -18,33 +18,38 @@ CYAN = "\x1b[36m"
 WHITE = "\x1b[37m"
 RESET = "\x1b[0m"
 
-expected = set()
+PART_PREFIX_LEN = len('*** part N: ')
+
+expected = {}
 if len(sys.argv) > 1:
     with open(sys.argv[1]) as f:
         for line in f:
             line = line.strip()
-            print(f'{CYAN}exp.{WHITE}{line[4:]}/{len(line)}')
-            if len(line) > 11:
-                expected.add(line)
+            part_prefix, answer = line[:PART_PREFIX_LEN], line[PART_PREFIX_LEN:]
+            print(f'{CYAN}exp.{WHITE}{part_prefix[4:]}{answer}')
+            if answer:
+                expected[part_prefix] = answer
 
 failing = False
 output = []
 
 def print_expected_for_failure(failed_line):
-    for exp_line in expected:
+    for exp_line, answer in expected.items():
         if exp_line.startswith(failed_line[:12]):
-            print(f"{CYAN}exp.{exp_line[4:12]}{WHITE}{exp_line[12:]}")
+            print(f"{CYAN}exp.{exp_line[4:]}{WHITE}{answer}")
 
 print(f'{CYAN}--- Starting run{WHITE}')
 for line in sys.stdin:
     line = line.rstrip()
     if line.startswith('*** part'):
         failed = False
-        if line in expected:
-            color = GREEN
-        elif expected:
-            color = RED
-            failed = failing = True
+        part_prefix, answer = line[:PART_PREFIX_LEN], line[PART_PREFIX_LEN:]
+        if part_prefix in expected:
+            if expected[part_prefix] == answer:
+                color = GREEN
+            else:
+                color = RED
+                failed = failing = True
         else:
             color = YELLOW
         output.append((line, failed, color))

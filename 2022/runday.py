@@ -26,9 +26,9 @@ subprocess.run(
         'entr',
         '-ccs', f"""
             echo Day {day_num:02}
-            set -e
-            python day.py < smallinput.txt | python ../check.py expected.txt
-            python day.py < input.txt | python ../check.py
+            set -e -o pipefail
+            python day.py < smallinput.txt  2>&1 | python ../check.py expected.txt
+            python day.py < input.txt  2>&1 | python ../check.py
         """
     ],
     cwd=day_dir,
