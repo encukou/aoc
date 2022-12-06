@@ -1,19 +1,13 @@
 import sys
 
 data = sys.stdin.read().strip()
-print(data)
 
 
-for i in range(len(data)):
-    print(data[i:i+4])
-    if len(set(data[i:i+4])) == 4:
-        print('*** part 1:', i+4)
-        break
+def solve(part_number, length):
+    for i in range(len(data)):
+        if len(set(data[i:i+length])) == length:
+            print(f'*** part {part_number}:', i+length)
+            break
 
-
-
-
-
-
-print('*** part 2:', ...)
-
+solve(1, 4)
+solve(2, 14)
