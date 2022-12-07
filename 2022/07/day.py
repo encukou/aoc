@@ -1,77 +1,50 @@
 import sys
+from collections import defaultdict
 
 data = sys.stdin.read().splitlines()
-print(data)
 
+# Paths are represented by tuples of components,
+# so `/a/e/i.dat` is represented by `('a', 'e', 'i.dat')`
+# The root directory `/` is the empty tuple
 
-class Dir:
-    def __init__(self, name, parent):
-        self._contents = {}
-        self._total_size = 0
-        self.name = name
-        self.parent = parent
-
-    def __repr__(self):
-        return f'<Dir {self.name}>'
-
-    def add_subdir(self, name):
-        return self._contents.setdefault(name, Dir(name, self))
-
-    def ls_add(self, name, size):
-        if name not in self._contents:
-            self._contents[name] = size
-            parent = self
-            while parent:
-                parent._total_size += size
-                parent = parent.parent
-
-    def walk(self, indent=0):
-        print('  ' * indent, self.name, '(dir)', self._total_size)
-        yield self
-        for name, entry in self._contents.items():
-            if isinstance(entry, Dir):
-                yield from entry.walk(indent+1)
-            else:
-                print('  ' * (indent+1), name, entry)
-
-root = Dir('/', None)
-path = [root]
+path = ()
+dir_sizes = {(): 0}
+file_sizes = {}
 for line in data:
     parts = line.split()
     print(parts)
     match parts:
         case '$', 'cd', '..':
-            path.pop()
+            path = path[:-1]
         case '$', 'cd', '/':
-            del path[1:]
+            path = ()
         case '$', 'cd', name:
-            path.append(path[-1].add_subdir(name))
+            path = path + (name,)
         case '$', 'ls':
             pass
         case 'dir', name:
-            path[-1].add_subdir(name)
+            dir_sizes.setdefault(path + (name,), 0)
         case size, name:
-            path[-1].ls_add(name, int(size))
+            full_name = path + (name,)
+            size = int(size)
+            if full_name not in file_sizes:
+                file_sizes[full_name] = size
+                for depth in range(len(full_name)):
+                    dir_sizes[path[:depth]] += size
         case _:
             raise ValueError(parts)
 
-    for d in root.walk():
-        pass
+for d, n in dir_sizes.items():
+    print(f'dir /{"/".join(d)}: {n}')
+for d, n in file_sizes.items():
+    print(f'file /{"/".join(d)}: {n}')
 
-small_dir_total = 0
-candidates = []
-unused = 70000000 - root._total_size
-NEED_TO_FREE = 30000000 - unused
-print(f'{unused=}')
-print(f'{NEED_TO_FREE=}')
-for d in root.walk():
-    if d._total_size <= 100000:
-        small_dir_total += d._total_size
-    if d._total_size >= NEED_TO_FREE:
-        candidates.append(d)
-candidates.sort(key=lambda d: d._total_size)
-print(candidates)
+small_sizes = (size for size in dir_sizes.values() if size < 100000)
 
-print('*** part 1:', small_dir_total)
-print('*** part 2:', candidates[0]._total_size)
-# not 43629016
+print('*** part 1:', sum(small_sizes))
+
+unused = 70000000 - dir_sizes[()]
+need_to_free = 30000000 - unused
+fitting_sizes = (size for size in dir_sizes.values() if size >= need_to_free)
+
+print('*** part 2:', min(fitting_sizes))
