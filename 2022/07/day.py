@@ -58,14 +58,20 @@ for line in data:
     for d in root.walk():
         pass
 
-total = 0
+small_dir_total = 0
+candidates = []
+unused = 70000000 - root._total_size
+NEED_TO_FREE = 30000000 - unused
+print(f'{unused=}')
+print(f'{NEED_TO_FREE=}')
 for d in root.walk():
     if d._total_size <= 100000:
-        total += d._total_size
+        small_dir_total += d._total_size
+    if d._total_size >= NEED_TO_FREE:
+        candidates.append(d)
+candidates.sort(key=lambda d: d._total_size)
+print(candidates)
 
-print('*** part 1:', total)
-
-
-
-
-print('*** part 2:', ...)
+print('*** part 1:', small_dir_total)
+print('*** part 2:', candidates[0]._total_size)
+# not 43629016
