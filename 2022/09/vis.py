@@ -1,7 +1,26 @@
 import skia                 # pip install skia-python
 from matplotlib import cm   # pip install matplotlib
 
+import subprocess
+
 from day import gen_positions, data
+
+command = [
+    # Thanks to Zulko for figuring this out, see:
+    # http://zulko.github.io/blog/2013/09/27/read-and-write-video-frames-in-python-using-ffmpeg/
+    'ffmpeg',
+    '-y', # overwrite existing output
+    '-f', 'rawvideo',
+    '-vcodec','rawvideo',
+    '-s', '1280x720', # size of one frame
+    '-pix_fmt', 'bgra',  # Skia internal format -- BGRA
+    '-r', '2', # frames per second
+    '-i', '-', # input from a pipe
+    '-an', # no audio
+    '-vcodec', 'h264',
+    'vis_output.mp4'
+]
+ffmpeg_process = subprocess.Popen(command, stdin=subprocess.PIPE)
 
 colormap = cm.get_cmap('plasma')
 
@@ -148,12 +167,19 @@ def gen_pic(frame, rope, tail_positions):
                 )
 
     image = surface.makeImageSnapshot()
-    filename = f'vis_images/{frame:04}.png'
-    print(filename)
-    image.save(filename, skia.kPNG)
+
+    btyes_written = ffmpeg_process.stdin.write(memoryview(image))
+    print(f'gave {btyes_written} bytes to ffmpeg')
+
+    #filename = f'vis_images/{frame:04}.png'
+    #image.save(filename, skia.kPNG)
 
 tail_positions = [(0, 0)]
 for frame, rope in enumerate(gen_positions(10, data[-1])):
     if rope[-1] != tail_positions[-1]:
         tail_positions.append(rope[-1])
     gen_pic(frame, rope, tail_positions)
+
+ffmpeg_process.stdin.close()
+ffmpeg_process.communicate()
+print('done')
