@@ -36,12 +36,12 @@ print('tiny:', solve(
 print('*** part 1:', solve(data, [20, 60, 100, 140, 180, 220]))
 
 def draw(data):
-    display = [['.'] * 40 for x in range(6)]
+    display = [['. '] * 40 for x in range(6)]
     for counter, register in scan(data):
         row, col = divmod(counter-1, 40)
         row = row % 6
         if abs(col - (register)) < 2:
-            display[row][col] = '█'
+            display[row][col] = '██'
         print(f'{counter:3}, {register:2}, {row}, {"".join(display[row])}')
 
     print()
