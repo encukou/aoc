@@ -36,16 +36,20 @@ print('tiny:', solve(
 print('*** part 1:', solve(data, [20, 60, 100, 140, 180, 220]))
 
 def draw(data):
-    display = [['. '] * 40 for x in range(6)]
+    display = [['.'] * 40 for x in range(6)]
     for counter, register in scan(data):
         row, col = divmod(counter-1, 40)
         row = row % 6
         if abs(col - (register)) < 2:
-            display[row][col] = '██'
+            # Arcane terminal escape sequences:
+            # \x1b#6 (double-width line)
+            # \x1b[7m (inverse video)
+            # \x1b[27m (reset inverse video)
+            display[row][col] = '\x1b#6\x1b[7m#\x1b[27m'
         print(f'{counter:3}, {register:2}, {row}, {"".join(display[row])}')
 
     print()
     for row, d in enumerate(display):
-        print(f'{row}, {"".join(d)}')
+        print(f'{"".join(d)}')
 
 draw(data)
