@@ -16,6 +16,37 @@ WIDTH = 1920
 HEIGHT = 1080
 TILE_SIZE = 60
 
+ACT = 2
+
+if ACT == 1:
+    STEP_T = 1
+    LOW_STEP_T = 1
+    STAGGER_FACTOR = .1
+    ROPE_LEN = 2
+    CENTER_FOLLOW_STEPS = 10_000
+    INITIAL_CENTER = 0, 0
+    with open('smallinput.txt') as file:
+        DATA = file.read().split('---')[0].strip().splitlines()
+elif ACT == 2:
+    STEP_T = 0.7
+    LOW_STEP_T = 0.5
+    STAGGER_FACTOR = .1
+    ROPE_LEN = 10
+    CENTER_FOLLOW_STEPS = 10_000
+    INITIAL_CENTER = -3, 0
+    with open('smallinput.txt') as file:
+        DATA = file.read().split('---')[-1].strip().splitlines()
+else:
+    STEP_T = 0.5
+    LOW_STEP_T = 0.2
+    STAGGER_FACTOR = .1
+    ROPE_LEN = 10
+    CENTER_FOLLOW_STEPS = 12
+    INITIAL_CENTER = 0, 0
+    with open('input.txt') as file:
+        DATA = file.read().strip().splitlines()
+
+
 def get_ffmpeg_process(start_it=True):
     try:
         return get_ffmpeg_process.ffmpeg_process
@@ -26,6 +57,7 @@ def get_ffmpeg_process(start_it=True):
     command = [
         # Thanks to Zulko for figuring this out, see:
         # http://zulko.github.io/blog/2013/09/27/read-and-write-video-frames-in-python-using-ffmpeg/
+        'time',
         'ffmpeg',
         '-y', # overwrite existing output
         '-f', 'rawvideo',
@@ -36,7 +68,7 @@ def get_ffmpeg_process(start_it=True):
         '-i', '-', # input from a pipe
         '-an', # no audio
         '-vcodec', 'h264',
-        'vis_output.mp4'
+        f'vis_act{ACT}_{FPS}fps.mp4'
     ]
     ffmpeg_process = subprocess.Popen(command, stdin=subprocess.PIPE)
     get_ffmpeg_process.ffmpeg_process = ffmpeg_process
@@ -47,30 +79,43 @@ class Clock:
         self.time = 0
         self.done = False
         self.queue = []
+        self._n = 0
 
     def run(self):
         async def drive():
             while not self.done:
                 while self.queue:
-                    time, action, args = heappop(self.queue)
-                    print(f'{time=} {action=} {args=}')
+                    time, _n, action, args = heappop(self.queue)
                     if time >= self.time:
                         self.time = time
                     print(f'@{self.time}, {action}{tuple(args)}')
+                    while asyncio.get_event_loop()._ready:
+                        await asyncio.sleep(0)
                     result = action(*args)
-                    print(f'{result=}')
                     if asyncio.iscoroutine(result):
                         asyncio.create_task(result)
-                await asyncio.sleep(0)
+                    while asyncio.get_event_loop()._ready:
+                        await asyncio.sleep(0)
+                    if self.done:
+                        break
         return asyncio.run(drive())
 
-    def schedule(self, func, *args, delay=0):
-        heappush(self.queue, (self.time+delay, func, args))
+    def schedule(self, delay, func=None, *args):
+        sched_time = self.time + delay
+        if func is None:
+            def decorator(func):
+                self._n += 1
+                heappush(self.queue, (sched_time, self._n, func, args))
+            return decorator
+        self._n += 1
+        heappush(self.queue, (sched_time, self._n, func, args))
+        for n, q in enumerate(self.queue):
+            print(f'Q{n} {q}')
 
-    def wait(self, delay):
+    async def wait(self, delay):
         future = asyncio.Future()
-        self.schedule(future.set_result, None, delay=delay)
-        return future
+        self.schedule(delay, future.set_result, None)
+        await future
 
 class Constant:
     def __init__(self, value):
@@ -94,11 +139,10 @@ class Anim:
         self.easing = easing
 
     def evaluate(self):
-        print(f'eval {self.start=} {self.end=} {self.start_time=} {self.duration=} {self.clock.time=}')
-        if self.clock.time < self.start_time:
+        if self.clock.time <= self.start_time:
             self.start = self.start.replacement
             return self.start.evaluate()
-        if self.clock.time > self.start_time + self.duration:
+        if self.clock.time >= self.start_time + self.duration:
             self.end = self.end.replacement
             self.replacement = self.end
             return self.end.evaluate()
@@ -109,6 +153,7 @@ class Anim:
         a = self.start.evaluate()
         self.end = self.end.replacement
         b = self.end.evaluate()
+        #print(f'eval {self.clock.time=} {self.start_time=} {self.duration=} {t=} {a=} {b=}')
         return (1-t) * a + t * b
 
 def ease_cos(t):
@@ -158,7 +203,6 @@ BG_PAINTS = [
     )
     for colors in [
         (0xFFede9da, 0xFFede9da),
-        #(0xFFeae9e3, 0xFFeae9e3),
         (0xFFe0dfd7, 0xFFe2e1dc),
     ]
 ]
@@ -166,18 +210,16 @@ BG_PAINTS = [
 def get_numbering_blob(n):
     return skia.TextBlob(str(n), NUMBERING_FONT)
 
+surface = skia.Surface(WIDTH, HEIGHT)
 def gen_pic(frame, rope, tail_positions, center):
-    surface = skia.Surface(WIDTH, HEIGHT)
 
     rope = [(r.evaluate(), c.evaluate()) for r, c, in rope]
-    tail_positions = [
-        (r.evaluate(), c.evaluate())
-        for r, c, in tail_positions
-    ]
+    #tail_positions = [
+    #    (r.evaluate(), c.evaluate())
+    #    for r, c, in tail_positions
+    #]
     center_r, center_c = (p.evaluate() for p in center)
-
-    rope_rows = [r for r, c in rope]
-    rope_cols = [c for r, c in rope]
+    print('c', (center_r, center_c))
 
     def log_to_pix(r, c):
         x = (c-center_c) * TILE_SIZE + WIDTH / 2
@@ -186,8 +228,8 @@ def gen_pic(frame, rope, tail_positions, center):
     center_x, center_y = log_to_pix(0, 0)
 
     with surface as canvas:
-        for r in range(int(center_r)-11, int(center_r)+11):
-            for c in range(int(center_c)-15, int(center_c)+15):
+        for r in range(int(center_r)-12, int(center_r)+12):
+            for c in range(int(center_c)-18, int(center_c)+18):
                 with skia.AutoCanvasRestore(canvas):
                     canvas.translate(*log_to_pix(r, c))
                     canvas.drawRect(BG_RECT, BG_PAINTS[(r+c) % 2])
@@ -220,7 +262,7 @@ def gen_pic(frame, rope, tail_positions, center):
             reversed(rope),
             reversed(rope[:1] + rope[:-1]),
         )):
-            print((r, c), (next_r, next_c))
+            print((r, c))
             color = skia.Color4f(*colormap(.005 + i / (len(rope)-1)))
             x, y = log_to_pix(r, c)
             path = skia.Path()
@@ -244,40 +286,59 @@ def gen_pic(frame, rope, tail_positions, center):
     filename = f'vis_images/{frame:04}.png'
     image.save(filename, skia.kPNG)
 
+
 clock = Clock()
-ROPE_LEN = 10
-center = Constant(0), Constant(0)
-rope = [(Constant(0), Constant(0)) for i in range(ROPE_LEN)]
-rope[0] = (
-    Anim(clock, Constant(0), Constant(1), 1, 1),
-    Anim(clock, Constant(0), Constant(-1), 1, 1),
-)
-center = (
-    Anim(clock, Constant(0), Constant(1), 1.1, 3, easing=ease_cos),
-    Anim(clock, Constant(0), Constant(-1), 1.1, 3, easing=ease_cos),
-)
-tail_positions = [(Constant(0), Constant(0))]
-#for frame, rope_in in enumerate(gen_positions(len(rope), data[-1])):
-#    if rope[-1] != tail_positions[-1]:
-#        tail_positions.append(rope[-1])
-#    gen_pic(frame, rope, tail_positions)
+center = [Constant(0), Constant(0)]
+rope = [[Constant(0), Constant(0)] for i in range(ROPE_LEN)]
+center = [Constant(c) for c in INITIAL_CENTER]
+tail_positions = [(0, 0)]
+@clock.schedule(0)
+async def visualize():
+    step_t = STEP_T
+    for step_num, rope_in in enumerate(gen_positions(len(rope), DATA)):
+        print('sim step', step_num, f'{step_t=}')
+        await clock.wait(step_t)
+        step_t = 0.99 * step_t + 0.01 * LOW_STEP_T
+        stagger_t = step_t * STAGGER_FACTOR
+        if rope_in[-1] != tail_positions[-1]:
+            clock.schedule(
+                step_t + stagger_t*ROPE_LEN, tail_positions.append, rope_in[-1],
+            )
+        for knot_i, knot in enumerate(rope_in):
+            for coord_i, coord in enumerate(knot):
+                rope[knot_i][coord_i] = Anim(
+                    clock=clock,
+                    start=rope[knot_i][coord_i],
+                    end=Constant(coord),
+                    start_time=clock.time + stagger_t * knot_i,
+                    duration=step_t,
+                    easing=ease_cos,
+                )
+        for axis in 0, 1:
+            vals = [pos[axis] for pos in rope_in]
+            center[axis] = Anim(
+                clock=clock,
+                start=center[axis],
+                end=Constant((max(vals) + min(vals)) / 2),
+                start_time=clock.time,
+                duration=step_t * CENTER_FOLLOW_STEPS,
+                easing=ease_cos,
+            )
+        #if step_num > 30:
+        #    break
+    await clock.wait(STEP_T * 5 + stagger_t * ROPE_LEN * 2)
+    clock.done = True
 
 
-    #center_r = (max(rope_rows) + min(rope_rows)) / 2
-    #center_c = (max(rope_cols) + min(rope_cols)) / 2
-
-@clock.schedule
+@clock.schedule(0)
 async def gen_pictures():
     start = time.perf_counter()
     for frame_no in itertools.count():
-        await clock.wait(1/30)
+        await clock.wait(1/FPS)
         seconds = time.perf_counter() - start
         encoding_fps = frame_no / seconds
         print(f'{frame_no=} {encoding_fps=}')
         gen_pic(frame_no, rope, tail_positions, center)
-        if frame_no > 200:
-            break
-    clock.done = True
 clock.run()
 
 
