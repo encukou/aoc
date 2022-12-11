@@ -14,52 +14,12 @@ class Monkey:
     dests: dict = field(default_factory=dict)
     activity: int = 0
 
-PRIMES = (2, 3, 5, 7, 11, 13, 17, 19, 23)
-
-class Value:
-    """Acts as a number, but only stores remaiders of division by small primes
-
-    (Only implements the needed operations: addition & multiplication)
-    """
-    def __init__(self, *, mods):
-        self.mods = mods
-
-    @classmethod
-    def from_int(cls, n):
-        n = int(n)
-        return cls(mods = {p: n % p for p in PRIMES})
-
-    def __repr__(self):
-        return f'<{",".join(str(m) for m in self.mods.values())}>'
-
-    def __add__(self, other):
-        return Value(mods={
-            p: (self.mods[p] + other.mods[p]) % p for p in PRIMES
-        })
-
-    def __mul__(self, other):
-        return Value(mods={
-            p: (self.mods[p] * other.mods[p]) % p for p in PRIMES
-        })
-
-    def is_divisible_by(self, n):
-        return not self.mods[n]
-
 OPS = {
     '+': operator.add,
     '*': operator.mul,
 }
 
 def solve(num_rounds, divide_by_3):
-    if divide_by_3:
-        # Use regular integers
-        make_val = int
-        is_divisible_by = lambda a, b: not a % b
-    else:
-        # Use custom numbers
-        make_val = Value.from_int
-        is_divisible_by = Value.is_divisible_by
-
     monkeys = []
     for line in data:
         match line.split():
@@ -68,13 +28,11 @@ def solve(num_rounds, divide_by_3):
                 assert len(monkeys) == num
                 monkeys.append(Monkey())
             case 'Starting', 'items:', *rest:
-                monkeys[-1].items.extend(make_val(i.strip(',')) for i in rest)
-            case 'Operation:', 'new', '=', a, op, b:
-                if a != 'old':
-                    a = make_val(a)
-                if b != 'old':
-                    b = make_val(b)
-                monkeys[-1].operation = a, OPS[op], b
+                monkeys[-1].items.extend(int(i.strip(',')) for i in rest)
+            case 'Operation:', 'new', '=', 'old', op, arg:
+                if arg != 'old':
+                    arg = int(arg)
+                monkeys[-1].operation = OPS[op], arg
             case 'Test:', 'divisible', 'by', num:
                 monkeys[-1].test = int(num)
             case 'If', 'true:', 'throw', 'to', 'monkey', num:
@@ -88,6 +46,10 @@ def solve(num_rounds, divide_by_3):
         print(line)
     for monkey in monkeys:
         print(monkey)
+
+    factors = set(monkey.test for monkey in monkeys)
+    common_multiple = functools.reduce(operator.mul, factors, 1)
+    print(f'{common_multiple=}={"*".join(str(f) for f in sorted(factors))}')
 
     for round_num in range(num_rounds):
         if round_num < 20 or not ((round_num-1) % 1000):
@@ -103,16 +65,15 @@ def solve(num_rounds, divide_by_3):
             while monkey.items:
                 old = monkey.items.popleft()
                 monkey.activity += 1
-                a, op, b = monkey.operation
-                level = op(
-                    {'old': old}.get(a, a),
-                    {'old': old}.get(b, b),
-                )
+                op, arg = monkey.operation
+                arg = {'old': old}.get(arg, arg)
+                level = op(old, arg)
                 log(f'    {old=} new={level} o={monkey.operation}')
-                log(level, op)
                 if divide_by_3:
-                    level = level // 3
-                decision = is_divisible_by(level, monkey.test)
+                    level //= 3
+                else:
+                    level %= common_multiple
+                decision = not level % monkey.test
                 dest = monkey.dests[decision]
                 log(f'    {level=} {decision=} {dest=}')
                 monkeys[dest].items.append(level)
