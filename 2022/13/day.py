@@ -1,10 +1,12 @@
 import sys
 import ast
+import functools
 
 data = sys.stdin.read().splitlines()
 print(data)
 
 def in_right_order(line1, line2):
+    print('try', line1, line2)
     match line1, line2:
         case int(), int():
             if line1 != line2:
@@ -45,7 +47,22 @@ while True:
 
 print('*** part 1:', part1)
 
+def order_cmp(a, b):
+    return {
+        True: -1,
+        None: 0,
+        False: 1,
+    }[in_right_order(a, b)]
+
+packets = [
+    [[2]],
+    [[6]],
+    *(ast.literal_eval(line) for line in data if line)
+]
+packets.sort(key=functools.cmp_to_key(order_cmp))
+for p in packets:
+    print(p)
+packets.insert(0, None)  # shift indices by 1
 
 
-
-print('*** part 2:', ...)
+print('*** part 2:', packets.index([[2]]) * packets.index([[6]]))
