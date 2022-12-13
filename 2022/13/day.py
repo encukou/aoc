@@ -3,66 +3,76 @@ import ast
 import functools
 
 data = sys.stdin.read().splitlines()
-print(data)
 
-def in_right_order(line1, line2):
-    print('try', line1, line2)
-    match line1, line2:
+CMP_REPR = {
+    -1: '<',    # right order
+    0: '=',     # same/don't know yet
+    1: '>',     # wrong order
+}
+
+def packet_cmp(left, right, indent=1):
+    log = functools.partial(print, *(['.'] * indent))
+    recurse = functools.partial(packet_cmp, indent=indent+1)
+    log(f'cmp: {left} <=> {right}')
+
+    match left, right:
         case int(), int():
-            if line1 != line2:
-                print('not same: ', line1, line2)
-                return line1 < line2
-            print('same: ', line1, line2)
+            if left == right:
+                result = 0
+            elif left < right:
+                result = -1
+            else:
+                result = 1
+            log(f'ints: {left} {CMP_REPR[result]} {right}')
+            return result
         case [a, *rest1], [b, *rest2]:
-            result = in_right_order(a, b)
-            if result is not None:
+            result = recurse(a, b)
+            if result:
+                log('result:', CMP_REPR[result])
                 return result
-            return in_right_order(rest1, rest2)
+            return recurse(rest1, rest2)
         case [a, *rest], []:
-            return False
+            log('more items in left (wrong order)')
+            return 0
         case [], [b, *rest]:
-            return True
+            log('more items in right (right order)')
+            return -1
+        case [], []:
+            log('empty (same)')
+            return 0
         case int(), list():
-            return in_right_order([line1], line2)
+            return recurse([left], right)
         case list(), int():
-            return in_right_order(line1, [line2])
+            return recurse(left, [right])
+    raise ValueError((left, right))
 
-iterator = iter(data)
-pair_index = 0
-part1 = 0
-while True:
-    pair_index += 1
-    line1 = ast.literal_eval(next(iterator))
-    line2 = ast.literal_eval(next(iterator))
-    try:
-        assert not next(iterator)
-    except StopIteration:
-        break
-    print('pair ', pair_index)
-    result = in_right_order(line1, line2)
-    print('result ', result)
-    if result:
-        print('ok!')
-        part1 += pair_index
+answer = 0
+assert not any(data[2::3])
+for pair_number, (left_line, right_line) in enumerate(
+    zip(data[::3], data[1::3], strict=True),
+    start=1,
+):
+    left = ast.literal_eval(left_line)
+    right = ast.literal_eval(right_line)
+    print(f'pair #{pair_number}')
+    result = packet_cmp(left, right)
+    print(f'result: {CMP_REPR[result]}')
+    if result < 0:
+        print(f'pair #{pair_number} ok!')
+        answer += pair_number
 
-print('*** part 1:', part1)
+print('*** part 1:', answer)
 
-def order_cmp(a, b):
-    return {
-        True: -1,
-        None: 0,
-        False: 1,
-    }[in_right_order(a, b)]
-
-packets = [
-    [[2]],
-    [[6]],
-    *(ast.literal_eval(line) for line in data if line)
-]
-packets.sort(key=functools.cmp_to_key(order_cmp))
+packets = sorted(
+    [
+        [[2]],
+        [[6]],
+        *(ast.literal_eval(line) for line in data if line)
+    ],
+    key=functools.cmp_to_key(packet_cmp),
+)
 for p in packets:
     print(p)
 packets.insert(0, None)  # shift indices by 1
-
 
 print('*** part 2:', packets.index([[2]]) * packets.index([[6]]))
