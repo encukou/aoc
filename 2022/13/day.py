@@ -1,5 +1,5 @@
 import sys
-import ast
+import json
 import functools
 
 data = sys.stdin.read().splitlines()
@@ -52,8 +52,8 @@ for pair_number, (left_line, right_line) in enumerate(
     zip(data[::3], data[1::3], strict=True),
     start=1,
 ):
-    left = ast.literal_eval(left_line)
-    right = ast.literal_eval(right_line)
+    left = json.loads(left_line)
+    right = json.loads(right_line)
     print(f'pair #{pair_number}')
     result = packet_cmp(left, right)
     print(f'result: {CMP_REPR[result]}')
@@ -67,7 +67,7 @@ packets = sorted(
     [
         [[2]],
         [[6]],
-        *(ast.literal_eval(line) for line in data if line)
+        *(json.loads(line) for line in data if line)
     ],
     key=functools.cmp_to_key(packet_cmp),
 )
