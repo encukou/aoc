@@ -15,8 +15,9 @@ FPS = 30
 WIDTH = 1920
 HEIGHT = 1080
 TILE_SIZE = 60
+SKIP_TIME = 0
 
-ACT = 2
+ACT = 4
 
 if ACT == 1:
     STEP_T = 1
@@ -45,6 +46,9 @@ else:
     INITIAL_CENTER = 0, 0
     with open('input.txt') as file:
         DATA = file.read().strip().splitlines()
+
+if ACT == 4:
+    SKIP_TIME = 2310.3000000000834
 
 
 def get_ffmpeg_process(start_it=True):
@@ -98,6 +102,7 @@ class Clock:
                         await asyncio.sleep(0)
                     if self.done:
                         break
+        print('run')
         return asyncio.run(drive())
 
     def schedule(self, delay, func=None, *args):
@@ -210,26 +215,27 @@ BG_PAINTS = [
 def get_numbering_blob(n):
     return skia.TextBlob(str(n), NUMBERING_FONT)
 
+
 surface = skia.Surface(WIDTH, HEIGHT)
-def gen_pic(frame, rope, tail_positions, center):
+def gen_pic(frame, rope, tail_positions, center, zoom):
 
     rope = [(r.evaluate(), c.evaluate()) for r, c, in rope]
-    #tail_positions = [
-    #    (r.evaluate(), c.evaluate())
-    #    for r, c, in tail_positions
-    #]
     center_r, center_c = (p.evaluate() for p in center)
     print('c', (center_r, center_c))
 
     def log_to_pix(r, c):
-        x = (c-center_c) * TILE_SIZE + WIDTH / 2
-        y = (r-center_r) * TILE_SIZE + HEIGHT / 2
+        x = (c-center_c) * TILE_SIZE
+        y = (r-center_r) * TILE_SIZE
         return x, y
     center_x, center_y = log_to_pix(0, 0)
 
-    with surface as canvas:
-        for r in range(int(center_r)-12, int(center_r)+12):
-            for c in range(int(center_c)-18, int(center_c)+18):
+    zoom = zoom.evaluate()
+
+    with surface as canvas, skia.AutoCanvasRestore(canvas):
+        canvas.translate(WIDTH / 2, HEIGHT / 2)
+        canvas.scale(1/zoom, 1/zoom)
+        for r in range(int(center_r-12*zoom), int(center_r+12*zoom)):
+            for c in range(int(center_c-18*zoom), int(center_c+18*zoom)):
                 with skia.AutoCanvasRestore(canvas):
                     canvas.translate(*log_to_pix(r, c))
                     canvas.drawRect(BG_RECT, BG_PAINTS[(r+c) % 2])
@@ -283,8 +289,8 @@ def gen_pic(frame, rope, tail_positions, center):
     btyes_written = get_ffmpeg_process().stdin.write(memoryview(image))
     print(f'gave {btyes_written} bytes to ffmpeg')
 
-    filename = f'vis_images/{frame:04}.png'
-    image.save(filename, skia.kPNG)
+    #filename = f'vis_images/{frame:04}.png'
+    #image.save(filename, skia.kPNG)
 
 
 clock = Clock()
@@ -292,6 +298,7 @@ center = [Constant(0), Constant(0)]
 rope = [[Constant(0), Constant(0)] for i in range(ROPE_LEN)]
 center = [Constant(c) for c in INITIAL_CENTER]
 tail_positions = [(0, 0)]
+zoom = Constant(1)
 @clock.schedule(0)
 async def visualize():
     step_t = STEP_T
@@ -324,21 +331,62 @@ async def visualize():
                 duration=step_t * CENTER_FOLLOW_STEPS,
                 easing=ease_cos,
             )
-        #if step_num > 30:
-        #    break
+
+
     await clock.wait(STEP_T * 5 + stagger_t * ROPE_LEN * 2)
+
+    END_ANIM_DURATION = 15
+    for axis in 0, 1:
+        series = [pos[axis] for pos in tail_positions]
+        center[axis] = Anim(
+            clock=clock,
+            start=center[axis],
+            end=Constant((min(series) + max(series)) / 2),
+            start_time=clock.time,
+            duration=END_ANIM_DURATION * 8,
+            easing=ease_cos,
+        )
+    await clock.wait(END_ANIM_DURATION/3)
+
+    for axis in 0, 1:
+        series = [pos[axis] for pos in tail_positions]
+        center[axis] = Anim(
+            clock=clock,
+            start=center[axis],
+            end=Constant((min(series) + max(series)) / 2),
+            start_time=clock.time,
+            duration=END_ANIM_DURATION * 2 / 3,
+            easing=ease_cos,
+        )
+    global zoom
+    N = 10
+    for i in range(0, N, 2):
+        zoom = Anim(
+            clock=clock,
+            start=zoom,
+            end=Constant(17),
+            start_time=clock.time + END_ANIM_DURATION * i/N,
+            duration=END_ANIM_DURATION * (N-i)/N,
+            easing=ease_cos,
+        )
+    await clock.wait(END_ANIM_DURATION)
+
+    await clock.wait(END_ANIM_DURATION)
+
     clock.done = True
 
 
 @clock.schedule(0)
 async def gen_pictures():
+    if SKIP_TIME:
+        await clock.wait(SKIP_TIME)
     start = time.perf_counter()
     for frame_no in itertools.count():
         await clock.wait(1/FPS)
         seconds = time.perf_counter() - start
         encoding_fps = frame_no / seconds
         print(f'{frame_no=} {encoding_fps=}')
-        gen_pic(frame_no, rope, tail_positions, center)
+        gen_pic(frame_no, rope, tail_positions, center, zoom)
 clock.run()
 
 
