@@ -1,5 +1,5 @@
 import sys
-from itertools import count
+from itertools import count, chain
 
 # for better "animation":
 import io
@@ -24,21 +24,28 @@ def tuple_add(a, b):
     bx, by = b
     return ax + bx, ay + by
 
-def draw_cave(cave, floor=-1):
-    xs = [x for x, y in cave]
-    ys = [y for x, y in cave]
+SPOUT = 500, 0
+
+def draw_cave(cave, fall_path=()):
+    xs = [x for x, y in chain(cave, fall_path, [SPOUT])]
+    ys = [y for x, y in chain(cave, fall_path, [SPOUT])]
     for y in range(min(ys)-1, max(ys)+2):
         print(f'{y:3}', end=': ', flush=False)
         for x in range(min(xs)-1, max(xs)+2):
-            if (x, y) == (500, 0):
-                print(cave.get((x, y), '+'), end='', flush=False)
-            elif y == floor+1:
-                print(cave.get((x, y), '▀'), end='', flush=False)
+            if (x, y) == SPOUT:
+                char = '+'
+            elif y == floor + 1:
+                char = '▀'
+            elif (x, y) in fall_path:
+                char = '~'
             else:
-                print(cave.get((x, y), '.'), end='', flush=False)
+                char = '.'
+            print(cave.get((x, y), char), end='', flush=False)
         print(flush=False)
+    print(f'{grains_in_cave = }', flush=True)
 
 cave = {}
+grains_in_cave = 0
 for line in data:
     points = []
     for pt in line.split('->'):
@@ -53,41 +60,36 @@ for line in data:
             cursor = tuple_add(cursor, d)
             cave[cursor] = '█'
             print(cursor)
+floor = max(y for x, y in cave) + 1
 draw_cave(cave)
 
-floor = max(y for x, y in cave) + 1
-grains_in_cave = 0
-
-def solve(end_y=floor):
-    """Let grains fall until one rests at end_y"""
+def solve(abyss=False):
     global grains_in_cave
-    while True:
-        sand = 500, 0
-        while True:
-            if (new := tuple_add(sand, (0, 1))) not in cave:
-                sand = new
-            elif (new := tuple_add(sand, (-1, 1))) not in cave:
-                sand = new
-            elif (new := tuple_add(sand, (1, 1))) not in cave:
-                sand = new
-            else:
+    fall_path = [(500, 0)]
+    while fall_path:
+        x, y = fall_path[-1]
+        for new in (x, y + 1), (x - 1, y + 1), (x + 1, y + 1):
+            if new not in cave and y != floor:
+                fall_path.append(new)
+                if floor < 100:
+                    draw_cave(cave, fall_path=fall_path)
                 break
-            if sand[1] == floor:
-                break
-        cave[sand] = 'O'
-        grains_in_cave += 1
-        print(grains_in_cave, flush=True)
-        draw_cave(cave, floor=floor)
-        if sand[1] == end_y:
-            return
+        else:
+            cave[x, y] = 'O'
+            grains_in_cave += 1
+            fall_path.pop()
+            if abyss and y >= floor:
+                draw_cave(cave, fall_path=fall_path)
+                return
+            if floor < 100 or (grains_in_cave % 1000 == 0):
+                draw_cave(cave, fall_path=fall_path)
 
-solve(end_y=floor)
+solve(abyss=True)
 
 # 1 grain is not counted: it's on the floor for part 2; part 1 considers
 # it missing
 answer = grains_in_cave - 1
 print('*** part 1:', answer)
 
-solve(end_y=0)
+solve(abyss=False)
 print('*** part 2:', grains_in_cave)
-exit(5)
