@@ -26,21 +26,28 @@ def tuple_add(a, b):
 
 SPOUT = 500, 0
 
-def draw_cave(cave, fall_path=()):
-    xs = [x for x, y in chain(cave, fall_path, [SPOUT])]
-    ys = [y for x, y in chain(cave, fall_path, [SPOUT])]
-    for y in range(min(ys)-1, max(ys)+2):
-        print(f'{y:3}', end=': ', flush=False)
-        for x in range(min(xs)-1, max(xs)+2):
-            if (x, y) == SPOUT:
-                char = '+'
-            elif y == floor + 1:
-                char = '▀'
-            elif (x, y) in fall_path:
-                char = '~'
-            else:
-                char = '.'
-            print(cave.get((x, y), char), end='', flush=False)
+def draw_cave_line(cave, y, xrange, fall_path=()):
+    print(f'{y:3}', end=': ', flush=False)
+    for x in xrange:
+        if (x, y) == SPOUT:
+            char = '+'
+        elif y == floor + 1:
+            char = '▀'
+        elif (x, y) in fall_path:
+            char = '~'
+        else:
+            char = '.'
+        print(cave.get((x, y), char), end='', flush=False)
+
+def draw_cave(cave, fall_path=(), yrange=None, xrange=None):
+    if xrange is None:
+        xs = [x for x, y in chain(cave, fall_path, [SPOUT])]
+        xrange = range(min(xs)-1, max(xs)+2)
+    if yrange is None:
+        ys = [y for x, y in chain(cave, fall_path, [SPOUT])]
+        yrange = range(min(ys)-1, max(ys)+2)
+    for y in yrange:
+        draw_cave_line(cave, y, xrange, fall_path)
         print(flush=False)
     print(f'{grains_in_cave = }', flush=True)
 
@@ -65,7 +72,7 @@ draw_cave(cave)
 
 def solve(abyss=False):
     global grains_in_cave
-    fall_path = [(500, 0)]
+    fall_path = [SPOUT]
     while fall_path:
         x, y = fall_path[-1]
         for new in (x, y + 1), (x - 1, y + 1), (x + 1, y + 1):
@@ -91,5 +98,24 @@ solve(abyss=True)
 answer = grains_in_cave - 1
 print('*** part 1:', answer)
 
-solve(abyss=False)
+# We could do part 2 using:
+#solve(abyss=False)
+
+# But going line by line will be more efficient:
+cave[SPOUT] = 'O'
+grains_in_cave += 1
+x_min = SPOUT[0] - floor
+x_max = SPOUT[0] + floor
+xrange = range(x_min, x_max+1)
+for y in range(SPOUT[1], floor+1):
+    for x in xrange:
+        if (
+            (x, y) not in cave
+            and any(cave.get((x + dx, y - 1), ' ') == 'O' for dx in (-1,0,1))
+        ):
+            cave[x, y] = 'O'
+            grains_in_cave += 1
+    draw_cave_line(cave, y, xrange=xrange)
+    print(f' g={grains_in_cave}', flush=True)
+
 print('*** part 2:', grains_in_cave)
