@@ -56,47 +56,38 @@ for line in data:
 draw_cave(cave)
 
 floor = max(y for x, y in cave) + 1
-for turn in count():
-    print(turn, flush=True)
-    sand = 500, 0
-    while True:
-        if (new := tuple_add(sand, (0, 1))) not in cave:
-            sand = new
-        elif (new := tuple_add(sand, (-1, 1))) not in cave:
-            sand = new
-        elif (new := tuple_add(sand, (1, 1))) not in cave:
-            sand = new
-        else:
-            break
-        if sand[1] > floor:
-            break
-    if sand[1] > floor:
-        break
-    cave[sand] = 'O'
-    draw_cave(cave, floor=floor)
+grains_in_cave = 0
 
-print('*** part 1:', turn)
-
-for turn in count(start=turn+1):
-    print(turn, flush=True)
-    sand = 500, 0
+def solve(end_y=floor):
+    """Let grains fall until one rests at end_y"""
+    global grains_in_cave
     while True:
-        if (new := tuple_add(sand, (0, 1))) not in cave:
-            sand = new
-        elif (new := tuple_add(sand, (-1, 1))) not in cave:
-            sand = new
-        elif (new := tuple_add(sand, (1, 1))) not in cave:
-            sand = new
-        else:
-            break
-        if sand[1] >= floor:
-            break
-    cave[sand] = 'O'
-    if turn % 100 == 0:
+        sand = 500, 0
+        while True:
+            if (new := tuple_add(sand, (0, 1))) not in cave:
+                sand = new
+            elif (new := tuple_add(sand, (-1, 1))) not in cave:
+                sand = new
+            elif (new := tuple_add(sand, (1, 1))) not in cave:
+                sand = new
+            else:
+                break
+            if sand[1] == floor:
+                break
+        cave[sand] = 'O'
+        grains_in_cave += 1
+        print(grains_in_cave, flush=True)
         draw_cave(cave, floor=floor)
-    if sand[1] <= 0:
-        break
-draw_cave(cave, floor=floor)
+        if sand[1] == end_y:
+            return
 
-print('*** part 2:', turn)
-# not 31375
+solve(end_y=floor)
+
+# 1 grain is not counted: it's on the floor for part 2; part 1 considers
+# it missing
+answer = grains_in_cave - 1
+print('*** part 1:', answer)
+
+solve(end_y=0)
+print('*** part 2:', grains_in_cave)
+exit(5)
