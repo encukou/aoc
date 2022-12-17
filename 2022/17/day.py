@@ -5,25 +5,25 @@ import itertools
 data = sys.stdin.read().strip()
 jets = list((n, -1 if j == '<' else 1) for n, j in enumerate(data))
 
-CONTEXT_SIZE = 8
-
-T = True
-F = False
+CONTEXT_SIZE = 32
 
 rocks = [
-    numpy.array([[T, T, T, T]]),
-    numpy.array([[F, T, F],
-                 [T, T, T],
-                 [F, T, F]]),
-    numpy.array([[F, F, T],
-                 [F, F, T],
-                 [T, T, T]]),
-    numpy.array([[T],
-                 [T],
-                 [T],
-                 [T]]),
-    numpy.array([[T, T],
-                 [T, T]]),
+    rock.astype(numpy.uint8) * (2*n+1)
+    for n, rock in enumerate([
+        numpy.array([[1, 1, 1, 1]]),
+        numpy.array([[0, 1, 0],
+                    [1, 1, 1],
+                    [0, 1, 0]]),
+        numpy.array([[0, 0, 1],
+                    [0, 0, 1],
+                    [1, 1, 1]]),
+        numpy.array([[1],
+                    [1],
+                    [1],
+                    [1]]),
+        numpy.array([[1, 1],
+                    [1, 1]]),
+    ])
 ]
 print(rocks)
 
@@ -33,28 +33,29 @@ CHAMBER_WIDTH = 7
 def logical_top_line(top_line, top_line_offset):
     return top_line_offset - top_line
 
-def draw_chamber(chamber, top_line, top_line_offset, test=None):
+def draw_chamber(chamber, top_line, top_line_offset, test=None, context=17):
     if test is None:
         test = chamber
     for i in range(top_line-6, min(MAT_SIZE, top_line+100)):
         print(
-            f'{i:4} |',
-            *numpy.where(
-                chamber[i, 1:-1],
-                '██',
-                numpy.where(test[i, 1:-1], '[]', '. '),
+            f'{i:4} \x1b[0m|',
+            *(
+                f'\x1b[{41+c//2}m[]\x1b[0m'
+                if c else
+                f'\x1b[{41+t//2};30m[]\x1b[0m'
+                if t else
+                '. '
+                for c, t in zip(chamber[i, 1:-1], test[i, 1:-1])
             ),
             '|',
-            f' - line {logical_top_line(i, top_line_offset):4}',
+            f' - line {logical_top_line(i, top_line_offset):4_}',
             ' (top)' if i == top_line else '',
             sep='',
         )
 
 def make_chamber():
-    chamber = numpy.zeros((MAT_SIZE, CHAMBER_WIDTH+2), dtype=bool)
-    chamber[..., 0] = True
-    chamber[..., -1] = True
-    chamber[-1] = True
+    chamber = numpy.zeros((MAT_SIZE, CHAMBER_WIDTH+2), dtype=numpy.uint8)
+    chamber[..., 0] = chamber[..., -1] = chamber[-1] = 13
     return chamber
 
 def solve(rocks_total):
@@ -62,19 +63,18 @@ def solve(rocks_total):
     top_line = MAT_SIZE-1
     top_line_offset = top_line
     jet_iter = itertools.cycle(jets)
-    draw_chamber(chamber, top_line, top_line_offset)
     memo = {}
     rock_num = -1
     use_memo = True
     for rock_type, rock in itertools.cycle(enumerate(rocks)):
         rock_num += 1
         if rock_num == rocks_total:
-            print(f'{rock_num} rocks fell')
-            draw_chamber(chamber, top_line, top_line_offset)
+            print(f'end, {rock_num:_} rocks fell')
+            draw_chamber(chamber, top_line, top_line_offset, context=1000)
             return logical_top_line(top_line, top_line_offset)
 
         log_line_by_line = rock_num < 3
-        log_rock_by_rock = rock_num < 10
+        log_rock_by_rock = rock_num <= 10
         log_context_clear_details = rock_num < 100
         log_context_clears = rock_num < 2000
         rock_pos = top_line - rock.shape[0] - 3, 3
@@ -88,11 +88,10 @@ def solve(rocks_total):
             test[pos()] = rock
             return test
 
-        if log_rock_by_rock:
-            draw_chamber(chamber, top_line, top_line_offset, get_test(rock))
         for gust_index, gust in jet_iter:
             if log_rock_by_rock:
                 print(f'rock {rock_num} starts falling, {gust_index=}')
+                draw_chamber(chamber, top_line, top_line_offset, get_test(rock))
                 log_rock_by_rock = False
             rock_pos = rock_pos[0], rock_pos[1] + gust
             test = get_test(rock)
@@ -110,7 +109,7 @@ def solve(rocks_total):
             test = get_test(rock)
             if (chamber & test).any():
                 rock_pos = rock_pos[0] - 1, rock_pos[1]
-                chamber[pos()] |= rock
+                chamber[pos()] += rock
                 top_line = min(rock_pos[0], top_line)
                 if log_line_by_line:
                     print('rock rests')
@@ -121,11 +120,11 @@ def solve(rocks_total):
                     print('rock falls')
                     draw_chamber(chamber, top_line, top_line_offset, test)
 
-        if top_line < MAT_SIZE - CONTEXT_SIZE:
+        if top_line < MAT_SIZE - CONTEXT_SIZE*2:
             context = chamber[top_line:top_line+CONTEXT_SIZE]
             if not context.any(axis=0).all():
                 continue
-            info = rock_type, gust_index, *numpy.packbits(context)
+            info = rock_type, gust_index, *numpy.packbits(context.astype(bool))
             prev_top = logical_top_line(top_line, top_line_offset)
             if log_context_clears:
                 print(f'CONTEXT CLEAR @ {rock_num} ({top_line}): {info}')
@@ -162,3 +161,4 @@ def solve(rocks_total):
 
 print('*** part 1:', solve(2022))
 print('*** part 2:', solve(1_000_000_000_000))
+print('*** extension:', solve(1_000_000_000_000_000_000_000_000))
