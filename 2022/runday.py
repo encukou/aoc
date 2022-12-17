@@ -24,7 +24,7 @@ if not day_dir.exists() and is_advent_day:
 subprocess.run(
     [
         'entr',
-        '-ccs', f"""
+        '-rccs', f"""
             echo Day {day_num:02}
             set -e -o pipefail
             python day.py < smallinput.txt  2>&1 | python ../check.py expected.txt
