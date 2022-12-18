@@ -6,15 +6,22 @@ import numpy
 data = sys.stdin.read().splitlines()
 
 def get_cube_faces(x, y, z):
-    # xy
-    yield frozenset([(x, y, z), (x, y+1, z), (x+1, y+1, z), (x+1, y, z)])
-    yield frozenset([(x, y, z+1), (x, y+1, z+1), (x+1, y+1, z+1), (x+1, y, z+1)])
-    # yz
-    yield frozenset([(x, y, z), (x, y+1, z), (x, y+1, z+1), (x, y, z+1)])
-    yield frozenset([(x+1, y, z), (x+1, y+1, z), (x+1, y+1, z+1), (x+1, y, z+1)])
-    # xz
-    yield frozenset([(x, y, z), (x+1, y, z), (x+1, y, z+1), (x, y, z+1)])
-    yield frozenset([(x, y+1, z), (x+1, y+1, z), (x+1, y+1, z+1), (x, y+1, z+1)])
+    """A cube face is represented by its orientation and starting point.
+
+    For example face ('xy', x, y, z) stretches between these points:
+    - x, y,   z
+    - x, y+1, z
+    - x, y,   z+1
+    - x, y+1, z+1
+    """
+    yield 'xy',  x,   y,   z
+    yield 'xy',  x,   y,   z+1
+
+    yield 'yz',  x,   y,   z
+    yield 'yz',  x+1, y,   z
+
+    yield 'xz',  x,   y,   z
+    yield 'xz',  x,   y+1, z
 
 def count_boundary_faces(cubes):
     face_counter = collections.Counter()
