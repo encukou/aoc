@@ -55,7 +55,7 @@ space = numpy.zeros((max(xs)+1, max(ys)+1, max(zs)+1), dtype=numpy.uint8)
 UNKNOWN = 0
 ROCK = 1
 PADDING = 2
-AIR = 3
+STEAM = 3
 
 for cube in cubes:
     space[cube] = ROCK
@@ -64,12 +64,12 @@ for cube in cubes:
 space = numpy.pad(space, 1, constant_values=UNKNOWN)
 space = numpy.pad(space, 1, constant_values=PADDING)
 
-# Flood fill UNKNOWN with AIR, starting in one corner
+# Flood fill UNKNOWN with STEAM, starting in one corner
 frontier = {(1, 1, 1)}
 while frontier:
     cube = frontier.pop()
     if space[cube] == UNKNOWN:
-        space[cube] = AIR
+        space[cube] = STEAM
         x, y, z = cube
         frontier.update((
             (x+1, y, z),
@@ -80,17 +80,16 @@ while frontier:
             (x, y, z-1),
         ))
 
-# remaining UNKNOWN is ROCK
+# Print out...
 for n, plane in enumerate(space):
     print(f'plane {n}:')
     for line in plane:
         for elem in line:
             print('▓█▒░'[elem]*2, end='')
         print()
-space[space == UNKNOWN] = ROCK
 
-# Process individual cubes as in part 1
-cubes = zip(*(space == ROCK).nonzero())
+# Process individual ROCK/UNKNOWN cubes as in part 1
+cubes = zip(*(space <= ROCK).nonzero())
 num_boundary_faces = count_boundary_faces(cubes)
 
 print('*** part 2:', num_boundary_faces)
