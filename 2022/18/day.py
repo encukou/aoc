@@ -44,6 +44,7 @@ num_boundary_faces = count_boundary_faces(cubes)
 
 print('*** part 1:', num_boundary_faces)
 
+numpy.set_printoptions(threshold=sys.maxsize, formatter={'numpystr':str})
 # Get a big enough NumPy array
 xs = [x for x, y, z in cubes]
 ys = [y for x, y, z in cubes]
@@ -62,7 +63,6 @@ for cube in cubes:
 # Pad the array with UNKNOWN and PADDING
 space = numpy.pad(space, 1, constant_values=UNKNOWN)
 space = numpy.pad(space, 1, constant_values=PADDING)
-print(space)
 
 # Flood fill UNKNOWN with AIR, starting in one corner
 frontier = {(1, 1, 1)}
@@ -81,8 +81,13 @@ while frontier:
         ))
 
 # remaining UNKNOWN is ROCK
+for n, plane in enumerate(space):
+    print(f'plane {n}:')
+    for line in plane:
+        for elem in line:
+            print('▓█▒░'[elem]*2, end='')
+        print()
 space[space == UNKNOWN] = ROCK
-print(space)
 
 # Process individual cubes as in part 1
 cubes = zip(*(space == ROCK).nonzero())
