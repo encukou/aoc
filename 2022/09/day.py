@@ -15,9 +15,10 @@ def abs_sgn(n):
         return -n, -1
     return 0, 0
 
-def solve(rope_length, instructions):
+def gen_positions(rope_length, instructions):
     rope = [(0, 0)] * rope_length
     tail_positions = set()
+    yield rope
     for line in instructions:
         print(line)
         direction, count = line.split()
@@ -45,11 +46,16 @@ def solve(rope_length, instructions):
                     follower_r += dir_r
                     follower_c += dir_c
                 rope[n+1] = follower_r, follower_c
-            # Record the tail (last knot) position
-            tail_positions.add(rope[-1])
-            print(rope)
+            yield rope
+
+def solve(rope_length, instructions):
+    tail_positions = set()
+    for rope in gen_positions(rope_length, instructions):
+        # Record the tail (last knot) position
+        tail_positions.add(rope[-1])
+        print(rope)
     return len(tail_positions)
 
-
-print('*** part 1:', solve(2, data[0]))
-print('*** part 2:', solve(10, data[-1]))
+if __name__ == '__main__':
+    print('*** part 1:', solve(2, data[0]))
+    print('*** part 2:', solve(10, data[-1]))
