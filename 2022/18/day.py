@@ -45,7 +45,7 @@ num_boundary_faces = count_boundary_faces(cubes)
 print('*** part 1:', num_boundary_faces)
 
 # Get a big enough NumPy array
-xs = [z for x, y, z in cubes]
+xs = [x for x, y, z in cubes]
 ys = [y for x, y, z in cubes]
 zs = [z for x, y, z in cubes]
 space = numpy.zeros((max(xs)+1, max(ys)+1, max(zs)+1), dtype=numpy.uint8)
