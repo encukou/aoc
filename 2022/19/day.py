@@ -1,21 +1,18 @@
 import sys
 import re
 from itertools import zip_longest
-from heapq import heappush, heappop
 from dataclasses import dataclass, field, replace
-import functools
-import pprint
+from functools import cached_property
 
 BLUEPRINT_RE = re.compile(r'Blueprint (\d+)')
 MATERIALS = {k: n for n, k in enumerate(('geode', 'obsidian', 'clay', 'ore'))}
 ORE = MATERIALS['ore']
 GEODE = MATERIALS['geode']
 ZEROS = tuple([0] * len(MATERIALS))
+INITIAL_ROBOTS = (*ZEROS[:-1], 1)
 
-# Goal must be first
+# Goal must be first, inintial robot last
 assert GEODE == 0
-
-TURNS = 24
 
 if sys.argv[1:]:
     with open(sys.argv[1]) as f:
@@ -23,122 +20,7 @@ if sys.argv[1:]:
 else:
     data = sys.stdin.read().splitlines()
 
-def tuple_replace(orig, n, replacement):
-    return *orig[:n], replacement, *orig[n+1:]
-
-@functools.lru_cache
-def max_materials(recipes):
-    r = tuple((max(m) for m in zip(*recipes)))
-    r = tuple_replace(r, GEODE, TURNS)
-    print(recipes, '->', r)
-    return r
-
-@functools.lru_cache
-def clamp_materials(materials, recipes):
-    return (
-        materials[0],
-        *(min(m) for m in zip(materials[1:], max_materials(recipes)[1:]))
-    )
-
-@dataclass(frozen=True, order=True)
-class Node:
-    recipes: list = field(compare=False, repr=False)
-    score: int = field(compare=False, default=None)
-    order: list = None
-    minutes_remaining: int = TURNS
-    robots: tuple = tuple_replace(ZEROS, ORE, 1)
-    materials: tuple = ZEROS
-    prev: object = field(compare=False, default=None, repr=False)
-    optimistic_estimate: int = field(compare=False, default=None)
-
-    def __post_init__(self):
-        """
-        ore = self.materials[ORE]
-        ore_robots = self.robots[ORE]
-        geo = self.materials[GEODE]
-        geo_robots = self.robots[GEODE]
-        #cost = min(
-            #self.recipes[ORE][ORE],
-            #self.recipes[GEODE][ORE],
-        #)
-        for i in range(self.minutes_remaining):
-            geo += geo_robots
-            geo_robots += 1
-        object.__setattr__(self, 'optimistic_estimate', geo)
-        """
-        object.__setattr__(self, 'score', self.materials[GEODE])
-        object.__setattr__(
-            self, 'order',
-            tuple(-n for n in self.robots + self.materials),
-        )
-
-    @property
-    def minute(self):
-        return TURNS-self.minutes_remaining
-
-    def __repr__(self):
-        def f(t):
-            return '(' + ','.join(f'{n:2}' for n in t) + ')'
-        return f'<@{self.minute:2}: s={self.score} m={f(self.materials)} r={f(self.robots)} o={self.order}>'
-
-    def is_better_than(self, other):
-        return (
-            all(s>=o for s, o in zip(self.materials, other.materials))
-            and all(s>=o for s, o in zip(self.robots, other.robots))
-        )
-
-    def gen_next_nodes(self):
-        if self.minutes_remaining <= 0:
-            return
-        have = self.materials
-        max_mat = max_materials(self.recipes)
-        built = False
-        def _gather(materials, robots):
-            return (
-                materials[0] + robots[0],
-                *tuple(
-                    mm
-                    if (r>=mm) else
-                    mm*self.minutes_remaining
-                    if (m+r > mm*self.minutes_remaining) else
-                    m+r
-                    for m, r, mm
-                    in zip(materials, robots, max_mat)
-                )[1:],
-            )
-        for recipe_idx, recipe in enumerate(self.recipes):
-            #if recipe_idx==ORE and have == ( 0, 0, 0, 3): breakpoint()
-            new_have = tuple((h - c for h, c in zip(have, recipe)))
-            new_robots = self.robots
-            if (
-                all(n >= 0 for n in new_have)
-                and self.robots[recipe_idx] < max_mat[recipe_idx]
-            ):
-                # Build a robot!
-                built = True
-                new_robots = tuple_replace(
-                    new_robots, recipe_idx, new_robots[recipe_idx] + 1
-                )
-                new_have = _gather(new_have, self.robots)
-                new_robots = clamp_materials(
-                    new_robots,
-                    self.recipes,
-                )
-                yield replace(
-                    self,
-                    minutes_remaining=self.minutes_remaining - 1,
-                    robots=new_robots,
-                    materials=new_have,
-                    prev=self,
-                )
-        yield replace(
-            self,
-            minutes_remaining=self.minutes_remaining - 1,
-            materials=_gather(self.materials, self.robots),
-            prev=self,
-        )
-
-def get_quality_level(line):
+def parse_blueprint(line):
     blueprint_header, recipes_text = line.split(':')
     blueprint_number = int(BLUEPRINT_RE.match(blueprint_header)[1])
     recipes = [0] * len(MATERIALS)
@@ -157,88 +39,171 @@ def get_quality_level(line):
             assert _and in (None, "and")
         recipes[MATERIALS[robot_type]] = tuple(materials)
     recipes = tuple(recipes)
+    return blueprint_number, recipes
+blueprints = tuple(parse_blueprint(line) for line in data)
+print(blueprints)
 
-    best_by_minute = {}
+@dataclass
+class Problem:
+    recipes: tuple
+    total_minutes: int
 
-    visited = set()
-    to_visit = [Node(recipes)]
+    @cached_property
+    def max_materials(self):
+        r = tuple((max(m) for m in zip(*self.recipes)))
+        r = (float('inf'), *r[1:])
+        return r
+
+
+@dataclass
+class Node:
+    problem: Problem
+    min_remaining: int
+    materials: tuple = ZEROS
+    robots: tuple = INITIAL_ROBOTS
+    prev: "Node" = None
+    history_entry: str = None
+
+    def __repr__(self):
+        def f(t):
+            return '(' + ','.join(f'{n:2}' for n in t) + ')'
+        return f'<@{self.minute:2}: m={f(self.materials)} r={f(self.robots)} {self.history}>'
+
+    @property
+    def minute(self):
+        return self.problem.total_minutes - self.min_remaining
+
+    @property
+    def score(self):
+        return self.materials[0]
+
+    @property
+    def history(self):
+        if self.history_entry:
+            return self.prev.history + self.history_entry
+        return ''
+
+    def gen_next_nodes(self):
+        min_remaining = self.min_remaining
+        if min_remaining == 0:
+            return
+        # Determine what robots we'll try to build.
+        # Can't build any that need resources we don't collect yet.
+        robots_remaining = {
+            n: r
+            for n, r in enumerate(self.problem.recipes)
+            if all(rob or not rec for rec, rob in zip(r, self.robots))
+        }
+        materials = self.materials
+        while min_remaining > 0 and robots_remaining:
+            min_remaining -= 1
+            for robot_idx, recipe in list(robots_remaining.items()):
+                if robot_idx not in robots_remaining:
+                    continue
+                if self.robots[robot_idx] >= self.problem.max_materials[robot_idx]:
+                    # We don't need this robot any more
+                    del robots_remaining[robot_idx]
+                    continue
+                # Can we build it?
+                if all(
+                    mat >= cost
+                    for mat, cost in zip(materials, recipe)
+                ):
+                    # Yes we can!
+                    del robots_remaining[robot_idx]
+                    yield replace(
+                        self,
+                        materials=tuple(
+                            mat - cost + income
+                            for mat, cost, income
+                            in zip(materials, recipe, self.robots)
+                        ),
+                        robots=tuple(
+                            r+(robot_idx==idx)
+                            for idx, r in enumerate(self.robots)
+                        ),
+                        min_remaining=min_remaining,
+                        prev=self,
+                        history_entry=str(robot_idx)
+                            + '⁰¹²³⁴'[len(robots_remaining)],
+                    )
+            # Gather materials
+            materials = tuple(
+                mat + income
+                for mat, income
+                in zip(materials, self.robots)
+            )
+        # If we ran out of time, yield the final state
+        if not min_remaining:
+            yield replace(
+                self,
+                materials=materials,
+                min_remaining=min_remaining,
+                prev=self,
+                history_entry='.',
+            )
+
+
+def solve_blueprint(blueprint, total_minutes):
+    blueprint_number, recipes = blueprint
+    to_visit = [Node(
+        problem=Problem(recipes, total_minutes),
+        min_remaining=total_minutes,
+    )]
+    best = None
     best_score = -1
     n = 0
     while to_visit:
-        node = heappop(to_visit)
-        if node in visited:
-            continue
-        visited.add(node)
-        #if node.optimistic_estimate < best_score:
-            #continue
+        node = to_visit.pop()
 
-        if node.minute == 3 and node.robots==(0,0,1,1):
-            print('!', node)
-        if node.minute == 4 and node.robots==(0,0,1,1):
-            print('!', node)
-        if node.minute == 5 and node.robots==(0,0,2,1):
-            print('!', node)
-        if node.minute == 6 and node.robots==(0,0,2,1):
-            print('!', node)
-        if node.minute == 7 and node.robots==(0,0,3,1):
-            print('!', node)
-        if node.minute == 8 and node.robots==(0,0,3,1):
-            print('!', node)
-        if node.minute == 9 and node.robots==(0,0,3,1):
-            print('!', node)
-        #if node.minute == 10 and node.robots==(0,0,3,1):
-            #print('!', node)
-
-        bad = False
-        bbm = best_by_minute.setdefault(node.minutes_remaining, set())
-        if node.minutes_remaining == 21:
-            print(f'{node=}')
-            print(f'{bbm=}')
-            #breakpoint()
-        for other in list(bbm):
-            if other.is_better_than(node):
-                bad = True
-                break
-            if node.is_better_than(other):
-                bbm.remove(other)
-        if bad:
-            # All other nodes are better than this one
-            continue
-        else:
-            bbm.add(node)
-
+        # Progress display
         n += 1
-        if n % 1000 == 0:
-            print('p', node, flush=True)
-            #print(dict(sorted((mr, len(s)) for mr, s in best_by_minute.items())))
-            #pprint.pprint(best_by_minute)
+        if n % 100_000 == 0:
+            print(
+                f'\x1b[K ... {n:8} {len(to_visit):3} {node.history}',
+                end='\r', flush=True, file=sys.stderr,
+            )
 
+        # New best score + display
         if node.score > best_score:
             best_score = node.score
             best = node
-            print(f'new best {best_score}')
+            print(f'\x1b[K(b{blueprint_number}@{total_minutes}m) new best {best_score}!')
             h = best
             while h is not None:
                 print(h)
                 h = h.prev
+            print(f'max_materials={node.problem.max_materials}')
             print(flush=True)
-        for new_node in node.gen_next_nodes():
-            #if node.optimistic_estimate > best_score:
-                heappush(to_visit, new_node)
 
-    print(f'{best}')
-
-    print(recipes)
-    print(f'{best_score=}, {blueprint_number=}')
-    return best_score * blueprint_number
-
-answer = 0
-for line in data:
-    answer += get_quality_level(line)
-
-print('*** part 1:', answer)
+        # Generate next nodes
+        for child in node.gen_next_nodes():
+            to_visit.append(child)
+    return best_score
 
 
+answer1 = 0
+for blueprint in blueprints:
+    blueprint_number, recipes = blueprint
+    geodes = solve_blueprint(blueprint, 24)
+    answer1 += geodes * blueprint_number
+    print(f'{geodes=} {blueprint_number=} {answer1=}')
 
+print('*** part 1:', answer1)
+# TEST 33 (9*1+12*2)
+# REAL 1356
 
-print('*** part 2:', ...)
+answer2 = 1
+for blueprint in blueprints[:3]:
+    geodes = solve_blueprint(blueprint, 32)
+    answer2 *= geodes
+
+print('*** part 2:', answer2)
+# TEST 3472 (56*62)
+# REAL:
+# 25200 too low
+# 1356 too low (duh)
+# 27720
+
+# 72*72*10 = 25200
+# 35*72
