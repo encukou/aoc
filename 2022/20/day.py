@@ -32,6 +32,11 @@ def solve(key, rounds):
                 if orig_idx == idx_to_move:
                     ins_idx = (current_idx + n) % (len(numbers)-1)
                     if ins_idx == 0 and n < 0:
+                        # Prefer putting numbers at end rather than the
+                        # beginning.
+                        # (This is not needed to get the right answer,
+                        # it just ensures the output is formatted exactly
+                        # like in the AoC example.)
                         ins_idx = len(numbers)-1
                     del numbers[current_idx]
                     numbers.insert(ins_idx, (orig_idx, n))
@@ -50,6 +55,7 @@ def solve(key, rounds):
             for i, (o, n) in enumerate(numbers):
                 if n == 0:
                     numbers = numbers[i:] + numbers[:i]
+            print(f'')
             print(f'After {round_no+1} round{"s"*bool(round_no)} of mixing:')
             print(*(n for i, n in numbers), sep=', ')
 
