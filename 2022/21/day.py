@@ -10,102 +10,115 @@ for line in data:
     except ValueError:
         monkeys[name] = yell.split()
 
-def get_number(monkeys, name):
-    match monkeys[name]:
+def evaluate(monkeys, name='root'):
+    expr = monkeys[name]
+    match expr:
         case int() as v:
+            print(f'{name}: {v}')
             return v
-        case a, '+', b:
-            return get_number(monkeys, a) + get_number(monkeys, b)
-        case a, '/', b:
-            r = get_number(monkeys, a) / get_number(monkeys, b)
-            assert r == int(r)
-            return int(r)
-        case a, '*', b:
-            return get_number(monkeys, a) * get_number(monkeys, b)
-        case a, '-', b:
-            return get_number(monkeys, a) - get_number(monkeys, b)
-        case x:
-            raise ValueError(x)
+        case a, op, b:
+            a = evaluate(monkeys, a)
+            b = evaluate(monkeys, b)
+            def _evaluate():
+                match op:
+                    case '+':
+                        return a + b
+                    case '*':
+                        return a * b
+                    case '-':
+                        return a - b
+                    case '/':
+                        if isinstance(a, int) and isinstance(b, int):
+                            assert a % b == 0, (a, b)
+                        return a // b
+                    case '=':
+                        if isinstance(a, UnknownExpr):
+                            return solve_for(a, b)
+                        elif isinstance(b, UnknownExpr):
+                            return solve_for(b, a)
+                        else:
+                            raise ValueError(expr)
+                    case _:
+                        raise ValueError(expr)
+            result = _evaluate()
+            print(f'{name}: {a} {op} {b} → {result}')
+            return result
+        case UnknownExpr() as u:
+            print(f'{name}: {u}')
+            return u
+        case _:
+            raise ValueError(expr)
 
 
-print('*** part 1:', get_number(monkeys, 'root'))
+print('*** part 1:', evaluate(monkeys))
 
-class Answer:
+class UnknownExpr:
+    """An expression with an unknown value
+
+    The unknown if represented as `<?>`.
+    """
     def __init__(self, *ops):
         self.ops = ops
+
+    def __repr__(self):
+        # if `ops == ()`, this is the unknown itself
+        if not self.ops:
+            return '<?>'
+        # Otherwise, it'll be a triple with operands and operator
+        a, op, b = self.ops
+        return f'({a} {op} {b})'
+
     def __add__(self, other):
-        return Answer(self, '+', other)
+        return UnknownExpr(self, '+', other)
     def __mul__(self, other):
-        return Answer(self, '*', other)
+        return UnknownExpr(self, '*', other)
     def __sub__(self, other):
-        return Answer(self, '-', other)
+        return UnknownExpr(self, '-', other)
     def __rsub__(self, other):
-        return Answer(other, '-', self)
+        return UnknownExpr(other, '-', self)
     def __floordiv__(self, other):
-        return Answer(self, '/', other)
+        return UnknownExpr(self, '/', other)
     __rmul__ = __mul__
     __radd__ = __add__
 
-    def __repr__(self):
-        if not self.ops:
-            return '<?>'
-        return f'<{" ".join(str(o) for o in self.ops)}>'
-
-def solve(expr, val):
-    def _s():
+def solve_for(expr, val):
+    """Return a value for <?> so that `expr` evaluates to `val`"""
+    def _solve():
         if isinstance(expr, int):
             return expr
         match expr.ops:
-            case Answer() as a, '/', int() as b:    # a/b = val
-                return solve(a, val * b)            # a = val*b
+            # a/b = val  =>  a = val*b
+            case UnknownExpr() as a, '/', int() as b:
+                return solve_for(a, val * b)
 
-            case Answer() as a, '+', int() as b:    # a+b = val
-                return solve(a, val - b)            # a = val-b
+            # a+b = val  =>  a = val-b
+            case UnknownExpr() as a, '+', int() as b:
+                return solve_for(a, val - b)
 
-            case Answer() as a, '-', int() as b:    # a-b = val
-                return solve(a, val + b)            # a = val+b
+            # a-v = val  =>  a = val+b
+            case UnknownExpr() as a, '-', int() as b:
+                return solve_for(a, val + b)
 
-            case Answer() as a, '*', int() as b:    # a*b = val
-                return solve(a, val // b)           # a = val/b
+            # a*b = val  =>  a = val/b
+            case UnknownExpr() as a, '*', int() as b:
+                assert val % b == 0
+                return solve_for(a, val // b)
 
-            case int() as a, '-', Answer() as b:    # a-b = val
-                return solve(b, a - val)            # b = a-val
+            # a-b = val  => b = a-val
+            case int() as a, '-', UnknownExpr() as b:
+                return solve_for(b, a - val)
 
+            # <?> = val
             case ():
                 return val
+
             case _:
                 # some cases might not be needed for my input
                 raise ValueError((expr, val))
-    result = _s()
-    print(f'{expr} = {result}: x={val}')
+    result = _solve()
+    print(f'{expr} = {val}  =>  <?> = {result}')
     return result
 
-def get_humn(monkeys, name):
-    yell = monkeys[name]
-    match yell:
-        case int() as v:
-            return v
-        case a, '+', b:
-            return get_humn(monkeys, a) + get_humn(monkeys, b)
-        case a, '/', b:
-            return get_humn(monkeys, a) // get_humn(monkeys, b)
-        case a, '*', b:
-            return get_humn(monkeys, a) * get_humn(monkeys, b)
-        case a, '-', b:
-            return get_humn(monkeys, a) - get_humn(monkeys, b)
-        case a, '=', b:
-            a = get_humn(monkeys, a)
-            b = get_humn(monkeys, b)
-            print(a, '=', b)
-            if isinstance(a, Answer):
-                return solve(a, b)
-            elif isinstance(b, Answer):
-                return solve(b, a)
-        case Answer():
-            return yell
-        case _:
-            raise ValueError((yell, type(yell)))
-
-monkeys['humn'] = Answer()
+monkeys['humn'] = UnknownExpr()
 monkeys['root'] = monkeys['root'][0], '=', monkeys['root'][-1]
-print('*** part 2:', get_humn(monkeys, 'root'))
+print('*** part 2:', evaluate(monkeys, 'root'))
