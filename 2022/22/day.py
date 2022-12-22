@@ -4,31 +4,27 @@ import re
 import functools
 import math
 from pprint import pprint
+from collections import namedtuple
 
 data = sys.stdin.read().splitlines()
 
-@dataclass
-class Facing:
-    char: str
-    delta: tuple
-    neighbors: dict = field(default_factory=dict, repr=False)
+class Vec2D(namedtuple('_', ('r', 'c'))):
+    @property
+    def char(self):
+        chars = {(0, 1): '>', (1, 0): 'v', (0, -1): '<', (-1, 0): '^'}
+        return chars.get(self, '?')
 
-facings = [
-    Facing('>', (0, 1)),    # (initial)
-    Facing('v', (1, 0)),
-    Facing('<', (0, -1)),
-    Facing('^', (-1, 0)),
-]
-for i, f in enumerate(facings):
-    # Left:
-    f.neighbors['L'] = facings[(i-1) % len(facings)]
-    # Forward:
-    f.neighbors['F'] = f
-    # Right:
-    f.neighbors['R'] = facings[(i+1) % len(facings)]
-    # U-turn:
-    f.neighbors['U'] = facings[(i+2) % len(facings)]
-facings_by_delta = {f.delta: f for f in facings}
+    def turned(self, direction):
+        dr, dc = self
+        if direction == 'L':    # turn left
+            return Vec2D(-dc, dr)
+        if direction == 'R':    # turn right
+            return Vec2D(dc, -dr)
+        if direction == 'U':    # U-turn
+            return Vec2D(-dr, -dc)
+        if direction == 'F':    # forward
+            return Vec2D(dr, dc)
+        raise ValueError(direction)
 
 @dataclass
 class BaseTile:
@@ -39,7 +35,7 @@ class BaseTile:
 
     def get_neighbor(self, facing):
         r, c = self.pos
-        dr, dc = facing.delta
+        dr, dc = facing
         r += dr
         c += dc
         return self.map[r, c], facing
@@ -53,7 +49,7 @@ class Tile2D(BaseTile):
         except KeyError:
             pass
         r, c = self.pos
-        dr, dc = facing.delta
+        dr, dc = facing
         rrange, crange = self.map.ranges
         print(r, c, rrange, crange)
         match dr, dc:
@@ -123,7 +119,7 @@ def draw_map(m, marks, zoom=1):
         print()
 
 def solve(the_map):
-    facing = facings[0]
+    facing = Vec2D(0, 1)
     current_tile = the_map.initial_tile
     journey = [(current_tile.pos, facing.char)]
     draw_map(the_map, journey)
@@ -132,9 +128,11 @@ def solve(the_map):
             continue
         print('>', instruction)
         try:
-            facing = facing.neighbors[instruction]
+            distance = int(instruction)
+        except ValueError:
+            facing = facing.turned(instruction)
             journey.append((current_tile.pos, facing.char))
-        except KeyError:
+        else:
             for i in range(int(instruction)):
                 new_tile, new_facing = current_tile.get_neighbor(facing)
                 if new_tile.char == '#':
@@ -147,10 +145,11 @@ def solve(the_map):
 
     print('fin:')
     draw_map(the_map, journey)
+    print(facing.char, facing)
     return(
         1000 * current_tile.pos[0]
         + 4 * current_tile.pos[1]
-        + facings.index(facing)
+        + '>v<^'.index(facing.char)
     )
 
 print('*** part 1:', solve(get_map(Map2D)))
@@ -283,7 +282,7 @@ class CubeFace:
     map: Map3D = field(repr=False)
 
     def conv_facing_to_3d(self, facing):
-        dr, dc = facing.delta
+        dr, dc = facing
         result = {
             self.r_axis[-1]: -dr if self.r_axis[0] == '-' else dr,
             self.c_axis[-1]: -dc if self.c_axis[0] == '-' else dc,
@@ -293,7 +292,7 @@ class CubeFace:
 
     def conv_3d_to_facing(self, dx, dy, dz):
         dirs = {'x': dx, 'y': dy, 'z': dz, '-x': -dx, '-y': -dy, '-z': -dz}
-        return facings_by_delta[dirs[self.r_axis], dirs[self.c_axis]]
+        return Vec2D(dirs[self.r_axis], dirs[self.c_axis])
 
     def conv_3d_to_2d(self, x, y, z):
         cs = self.map.cube_size
