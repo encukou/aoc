@@ -26,19 +26,20 @@ class Vec2D(namedtuple('_', ('r', 'c'))):
             return Vec2D(dr, dc)
         raise ValueError(direction)
 
+    def __add__(self, other):
+        rs, cs = self
+        ro, co = other
+        return Vec2D(rs + ro, cs + co)
+
 @dataclass
 class BaseTile:
-    pos: tuple
+    pos: Vec2D
     char: str
     map: dict = field(repr=False)
     neighbors: dict = field(default_factory=dict)
 
     def get_neighbor(self, facing):
-        r, c = self.pos
-        dr, dc = facing
-        r += dr
-        c += dc
-        return self.map[r, c], facing
+        return self.map[self.pos + facing], facing
 
 
 @dataclass
@@ -51,7 +52,6 @@ class Tile2D(BaseTile):
         r, c = self.pos
         dr, dc = facing
         rrange, crange = self.map.ranges
-        print(r, c, rrange, crange)
         match dr, dc:
             case 1, 0:
                 r = rrange.start
@@ -61,10 +61,10 @@ class Tile2D(BaseTile):
                 c = crange.start
             case 0, -1:
                 c = crange.stop - 1
-        while (r, c) not in self.map and c in crange and r in rrange:
-            r += dr
-            c += dc
-        return self.map[r, c], facing
+        pos = Vec2D(r, c)
+        while pos not in self.map and c in crange and r in rrange:
+            pos += facing
+        return self.map[pos], facing
 
 class BaseMap(dict):
     def initialize(self):
@@ -83,8 +83,9 @@ def get_map(map_factory=Map2D):
             break
         for col, char in enumerate(line, start=1):
             if char != ' ':
-                result[(row, col)] = t = result.tile_factory(
-                    pos=(row, col),
+                pos = Vec2D(row, col)
+                result[pos] = t = result.tile_factory(
+                    pos=pos,
                     char=char,
                     map=result,
                 )
@@ -146,11 +147,8 @@ def solve(the_map):
     print('fin:')
     draw_map(the_map, journey)
     print(facing.char, facing)
-    return(
-        1000 * current_tile.pos[0]
-        + 4 * current_tile.pos[1]
-        + '>v<^'.index(facing.char)
-    )
+    r, c = current_tile.pos
+    return 1000 * r + 4 * c + '>v<^'.index(facing.char)
 
 print('*** part 1:', solve(get_map(Map2D)))
 
@@ -161,7 +159,7 @@ class Tile3D(BaseTile):
         except KeyError:
             pass
         print(f'{self=}')
-        x, y, z, face = self.map.conv_2d_to_3d(*self.pos)
+        x, y, z, face = self.map.conv_2d_to_3d(self.pos)
         print(f'{x=} {y=} {z=} {face=}')
         dx, dy, dz = face.conv_facing_to_3d(facing)
         print(f'{dx=} {dy=} {dz=}')
@@ -178,9 +176,9 @@ class Tile3D(BaseTile):
         new_facing = new_face.conv_3d_to_facing(d2x, d2y, d2z)
         print(f'{new_facing=}')
         print(f'{x=} {y=} {z=}')
-        r, c = new_face.conv_3d_to_2d(x, y, z)
-        print(f'{r=} {c=}')
-        return self.map[r, c], new_facing
+        new_pos = new_face.conv_3d_to_2d(x, y, z)
+        print(f'{new_pos=}')
+        return self.map[new_pos], new_facing
 
 def neg_axis(axis):
     return ('-' + axis).removeprefix('--')
@@ -252,7 +250,8 @@ class Map3D(BaseMap):
         add_faces(self.faces['z'])
         pprint(self.faces)
 
-    def conv_2d_to_3d(self, r, c):
+    def conv_2d_to_3d(self, pos):
+        r, c = pos
         cs = self.cube_size
         def coo(n, ax):
             if ax[0] == '-':
@@ -297,7 +296,7 @@ class CubeFace:
     def conv_3d_to_2d(self, x, y, z):
         cs = self.map.cube_size
         dirs = {'x': x, 'y': y, 'z': z, '-x': cs-1-x, '-y': cs-1-y, '-z': cs-1-z}
-        return self.r_start+dirs[self.r_axis], self.c_start+dirs[self.c_axis]
+        return Vec2D(self.r_start+dirs[self.r_axis], self.c_start+dirs[self.c_axis])
 
 map_3d = get_map(Map3D)
 
