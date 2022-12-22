@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import re
 import functools
 import math
+from pprint import pprint
 
 data = sys.stdin.read().splitlines()
 
@@ -27,6 +28,7 @@ for i, f in enumerate(facings):
     f.neighbors['R'] = facings[(i+1) % len(facings)]
     # U-turn:
     f.neighbors['U'] = facings[(i+2) % len(facings)]
+facings_by_delta = {f.delta: f for f in facings}
 
 @dataclass
 class BaseTile:
@@ -159,102 +161,145 @@ class Tile3D(BaseTile):
             return super().get_neighbor(facing)
         except KeyError:
             pass
-        cube_size = self.map.cube_size
-        r, c = orig_r, orig_c = self.pos
-        cube_r, mod_r = divmod(r-1, cube_size)
-        cube_c, mod_c = divmod(c-1, cube_size)
-        print(cube_r, mod_r, cube_c, mod_c)
-        try:
-            transition = self.map.transitions[cube_r, cube_c, facing.char]
-        except KeyError:
-            draw_map(self.map, {
-                (orig_r, orig_c): facing.char,
-                (orig_r+dr, orig_c+dc): facing.char,
-            })
-            raise
-        (
-            new_cube_r, new_cube_c, new_facing, row_action, col_action, dbg
-        ) = transition
-        print(transition)
-        def get_new_val(action):
-            match action:
-                case 'i':
-                    return 0
-                case 'f':
-                    return cube_size - 1
-                case 'r':
-                    return mod_r
-                case 'R':
-                    return cube_size - 1 - mod_r
-                case 'c':
-                    return mod_c
-                case 'C':
-                    return cube_size - 1 - mod_c
-                case _:
-                    raise ValueError(col_action)
-        new_mod_r = get_new_val(row_action)
-        new_mod_c = get_new_val(col_action)
-        r = (new_cube_r * cube_size + new_mod_r) + 1
-        c = (new_cube_c * cube_size + new_mod_c) + 1
-        if dbg:
-            draw_map(self.map, {
-                (orig_r, orig_c): facing.char,
-                (orig_r+dr, orig_c+dc): facing.char,
-                (r, c): new_facing.char,
-            })
-            print('dbg stop', transition, r, c)
-            exit(1)
+        print(f'{self=}')
+        x, y, z, face = self.map.conv_2d_to_3d(*self.pos)
+        print(f'{x=} {y=} {z=} {face=}')
+        dx, dy, dz = face.conv_facing_to_3d(facing)
+        print(f'{dx=} {dy=} {dz=}')
+        d2x, d2y, d2z = plane_to_3d(neg_axis(face.plane))
+        print(f'{d2x=} {d2y=} {d2z=}')
+        x += dx + d2x
+        y += dy + d2y
+        z += dz + d2z
+        print(f'{x=} {y=} {z=}')
+        new_plane = conv_3d_to_plane(dx, dy, dz)
+        print(f'{new_plane=}')
+        new_face = self.map.faces[new_plane]
+        print(f'{new_face=}')
+        new_facing = new_face.conv_3d_to_facing(d2x, d2y, d2z)
+        print(f'{new_facing=}')
+        print(f'{x=} {y=} {z=}')
+        r, c = new_face.conv_3d_to_2d(x, y, z)
+        print(f'{r=} {c=}')
         return self.map[r, c], new_facing
+
+def neg_axis(axis):
+    return ('-' + axis).removeprefix('--')
+
+def plane_to_3d(plane):
+    if plane.startswith('-'):
+        un = -1
+    else:
+        un = 1
+    if plane[-1] == 'x':
+        return un, 0, 0
+    elif plane[-1] == 'y':
+        return 0, un, 0
+    elif plane[-1] == 'z':
+        return 0, 0, un
+
+def conv_3d_to_plane(dx, dy, dz):
+    m = '-' if dx<0 or dy<0 or dz<0 else ''
+    if dx:
+        return m + 'x'
+    if dy:
+        return m + 'y'
+    if dz:
+        return m + 'z'
 
 class Map3D(BaseMap):
     tile_factory = Tile3D
 
     def initialize(self):
+        super().initialize()
         self.cube_size = math.sqrt(len(self) / 6)
         assert self.cube_size.is_integer()
-        self.cube_size = int(self.cube_size)
-        super().initialize()
+        self.cube_size = cs = int(self.cube_size)
+        r, c = self.initial_tile.pos
+        self.faces = {'z': CubeFace(
+            r_axis='y',
+            c_axis='x',
+            plane='z',
+            r_start=r,
+            c_start=c,
+            map=self,
+        )}
+        pprint(self.faces)
+        def add_faces(f):
+            m = neg_axis
+            for r_axis, c_axis, plane, r_start, c_start in (
+                (f.r_axis, m(f.plane), f.c_axis, f.r_start, f.c_start+cs), #>
+                (m(f.plane), f.c_axis, f.r_axis, f.r_start+cs, f.c_start), #v
+                (f.r_axis, f.plane, m(f.c_axis), f.r_start, f.c_start-cs), #<
+                (f.plane, f.c_axis, m(f.r_axis), f.r_start-cs, f.c_start), #^
+            ):
+                print((r_start, c_start), self.get((r_start, c_start)), plane)
+                if (r_start, c_start) not in self:
+                    continue
+                new_face = CubeFace(
+                    r_axis=r_axis,
+                    c_axis=c_axis,
+                    plane=plane,
+                    r_start=r_start,
+                    c_start=c_start,
+                    map=self,
+                )
+                if plane in self.faces:
+                    print(f)
+                    assert self.faces[plane] == new_face, (self.faces[plane], new_face)
+                else:
+                    self.faces[plane] = new_face
+                    add_faces(new_face)
+        add_faces(self.faces['z'])
+        pprint(self.faces)
+
+    def conv_2d_to_3d(self, r, c):
+        cs = self.cube_size
+        def coo(n, ax):
+            if ax[0] == '-':
+                return cs - 1 - n
+            else:
+                return n
+        for face in self.faces.values():
+            if (
+                face.r_start <= r < face.r_start + cs
+                and face.c_start <= c < face.c_start + cs
+            ):
+                result = {
+                    face.r_axis[-1]: coo(r - face.r_start, face.r_axis[0]),
+                    face.c_axis[-1]: coo(c - face.c_start, face.c_axis[0]),
+                    face.plane[-1]: coo(cs, face.plane[0]),
+                }
+                return result['x'], result['y'], result['z'], face
+
+
+@dataclass
+class CubeFace:
+    r_axis: str
+    c_axis: str
+    plane: str
+    r_start: int
+    c_start: int
+    map: Map3D = field(repr=False)
+
+    def conv_facing_to_3d(self, facing):
+        dr, dc = facing.delta
+        result = {
+            self.r_axis[-1]: -dr if self.r_axis[0] == '-' else dr,
+            self.c_axis[-1]: -dc if self.c_axis[0] == '-' else dc,
+            self.plane[-1]: 0,
+        }
+        return result['x'], result['y'], result['z']
+
+    def conv_3d_to_facing(self, dx, dy, dz):
+        dirs = {'x': dx, 'y': dy, 'z': dz, '-x': -dx, '-y': -dy, '-z': -dz}
+        return facings_by_delta[dirs[self.r_axis], dirs[self.c_axis]]
+
+    def conv_3d_to_2d(self, x, y, z):
+        cs = self.map.cube_size
+        dirs = {'x': x, 'y': y, 'z': z, '-x': cs-1-x, '-y': cs-1-y, '-z': cs-1-z}
+        return self.r_start+dirs[self.r_axis], self.c_start+dirs[self.c_axis]
 
 map_3d = get_map(Map3D)
-map_3d.transitions = {}
-F = {facing.char: facing for facing in facings}
-if len(data) < 100:
-    map_3d.transitions[(1, 2, '>')] = 2, 3, F['v'], 'i', 'R', 0
-    map_3d.transitions[(2, 2, 'v')] = 1, 0, F['^'], 'f', 'C', 0
-    map_3d.transitions[(1, 1, '^')] = 0, 2, F['>'], 'c', 'i', 0
-else:
-    map_3d.transitions[(0, 1, '^')] = 3, 0, F['>'], 'c', 'i', 0
-    map_3d.transitions[(3, 0, '<')] = 0, 1, F['v'], 'i', 'r', 0
-
-    map_3d.transitions[(0, 1, '<')] = 2, 0, F['>'], 'R', 'i', 0
-    map_3d.transitions[(2, 0, '<')] = 0, 1, F['>'], 'R', 'i', 0
-
-    map_3d.transitions[(2, 0, '^')] = 1, 1, F['>'], 'c', 'i', 0
-    map_3d.transitions[(1, 1, '<')] = 2, 0, F['v'], 'i', 'r', 0
-
-    map_3d.transitions[(0, 2, '^')] = 3, 0, F['^'], 'f', 'c', 0
-    map_3d.transitions[(3, 0, 'v')] = 0, 2, F['v'], 'i', 'c', 0
-
-    map_3d.transitions[(0, 2, 'v')] = 1, 1, F['<'], 'c', 'f', 0
-    map_3d.transitions[(1, 1, '>')] = 0, 2, F['^'], 'f', 'r', 0
-
-    map_3d.transitions[(2, 1, '>')] = 0, 2, F['<'], 'R', 'f', 0
-    map_3d.transitions[(0, 2, '>')] = 2, 1, F['<'], 'R', 'f', 0
-
-    map_3d.transitions[(3, 0, '>')] = 2, 1, F['^'], 'f', 'r', 0
-    map_3d.transitions[(2, 1, 'v')] = 3, 0, F['<'], 'c', 'f', 0
-
-    # Some checks...
-    for k, tr in map_3d.transitions.items():
-        scr, scc, sfc = k
-        sf = F[sfc]
-        dcr, dcc, df, ra, ca, dbg = tr
-        ok = dcr, dcc, df.neighbors['U'].char
-        odcr, odcc, odf, ora, oca, odbg = otr = map_3d.transitions[ok]
-        print(k, tr)
-        print(ok, otr)
-        assert odcr == scr
-        assert odcc == scc
-        assert odf == sf.neighbors['U']
 
 print('*** part 2:', solve(map_3d))
