@@ -127,7 +127,7 @@ def solve(the_map):
     for instruction in re.split('(\d+)', data[-1]):
         if not instruction:
             continue
-        print('>', instruction)
+        print('do', instruction)
         try:
             distance = int(instruction)
         except ValueError:
@@ -152,57 +152,33 @@ def solve(the_map):
 
 print('*** part 1:', solve(get_map(Map2D)))
 
+class Vec3D(namedtuple('_', ('x', 'y', 'z'))):
+    def __add__(self, other):
+        sx, sy, sz = self
+        ox, oy, oz = other
+        return Vec3D(sx+ox, sy+oy, sz+oz)
+
+    def __neg__(self):
+        x, y, z = self
+        return Vec3D(-x, -y, -z)
+
+X_AX = Vec3D(1, 0, 0)
+Y_AX = Vec3D(0, 1, 0)
+Z_AX = Vec3D(0, 0, 1)
+
 class Tile3D(BaseTile):
     def get_neighbor(self, facing):
         try:
             return super().get_neighbor(facing)
         except KeyError:
             pass
-        print(f'{self=}')
-        x, y, z, face = self.map.conv_2d_to_3d(self.pos)
-        print(f'{x=} {y=} {z=} {face=}')
-        dx, dy, dz = face.conv_facing_to_3d(facing)
-        print(f'{dx=} {dy=} {dz=}')
-        d2x, d2y, d2z = plane_to_3d(neg_axis(face.plane))
-        print(f'{d2x=} {d2y=} {d2z=}')
-        x += dx + d2x
-        y += dy + d2y
-        z += dz + d2z
-        print(f'{x=} {y=} {z=}')
-        new_plane = conv_3d_to_plane(dx, dy, dz)
-        print(f'{new_plane=}')
-        new_face = self.map.faces[new_plane]
-        print(f'{new_face=}')
-        new_facing = new_face.conv_3d_to_facing(d2x, d2y, d2z)
-        print(f'{new_facing=}')
-        print(f'{x=} {y=} {z=}')
-        new_pos = new_face.conv_3d_to_2d(x, y, z)
-        print(f'{new_pos=}')
+        pos3d, face = self.map.conv_2d_to_3d(self.pos)
+        facing3d = face.conv_facing_to_3d(facing)
+        pos3d += facing3d + -face.plane
+        new_face = self.map.faces[facing3d]
+        new_facing = new_face.conv_3d_to_facing(-face.plane)
+        new_pos = new_face.conv_3d_to_2d(pos3d)
         return self.map[new_pos], new_facing
-
-def neg_axis(axis):
-    return ('-' + axis).removeprefix('--')
-
-def plane_to_3d(plane):
-    if plane.startswith('-'):
-        un = -1
-    else:
-        un = 1
-    if plane[-1] == 'x':
-        return un, 0, 0
-    elif plane[-1] == 'y':
-        return 0, un, 0
-    elif plane[-1] == 'z':
-        return 0, 0, un
-
-def conv_3d_to_plane(dx, dy, dz):
-    m = '-' if dx<0 or dy<0 or dz<0 else ''
-    if dx:
-        return m + 'x'
-    if dy:
-        return m + 'y'
-    if dz:
-        return m + 'z'
 
 class Map3D(BaseMap):
     tile_factory = Tile3D
@@ -213,22 +189,21 @@ class Map3D(BaseMap):
         assert self.cube_size.is_integer()
         self.cube_size = cs = int(self.cube_size)
         r, c = self.initial_tile.pos
-        self.faces = {'z': CubeFace(
-            r_axis='y',
-            c_axis='x',
-            plane='z',
+        z_face = CubeFace(
+            r_axis=Y_AX,
+            c_axis=X_AX,
+            plane=Z_AX,
             r_start=r,
             c_start=c,
             map=self,
-        )}
-        pprint(self.faces)
+        )
+        self.faces = {Z_AX: z_face}
         def add_faces(f):
-            m = neg_axis
             for r_axis, c_axis, plane, r_start, c_start in (
-                (f.r_axis, m(f.plane), f.c_axis, f.r_start, f.c_start+cs), #>
-                (m(f.plane), f.c_axis, f.r_axis, f.r_start+cs, f.c_start), #v
-                (f.r_axis, f.plane, m(f.c_axis), f.r_start, f.c_start-cs), #<
-                (f.plane, f.c_axis, m(f.r_axis), f.r_start-cs, f.c_start), #^
+                (f.r_axis, -f.plane, f.c_axis, f.r_start, f.c_start+cs),  #>
+                (-f.plane, f.c_axis, f.r_axis, f.r_start+cs, f.c_start),  #v
+                (f.r_axis, f.plane, -f.c_axis, f.r_start, f.c_start-cs),  #<
+                (f.plane, f.c_axis, -f.r_axis, f.r_start-cs, f.c_start),  #^
             ):
                 print((r_start, c_start), self.get((r_start, c_start)), plane)
                 if (r_start, c_start) not in self:
@@ -247,7 +222,7 @@ class Map3D(BaseMap):
                 else:
                     self.faces[plane] = new_face
                     add_faces(new_face)
-        add_faces(self.faces['z'])
+        add_faces(z_face)
         pprint(self.faces)
 
     def conv_2d_to_3d(self, pos):
@@ -263,12 +238,14 @@ class Map3D(BaseMap):
                 face.r_start <= r < face.r_start + cs
                 and face.c_start <= c < face.c_start + cs
             ):
+                ar = r - face.r_start
+                ac = c - face.c_start
                 result = {
-                    face.r_axis[-1]: coo(r - face.r_start, face.r_axis[0]),
-                    face.c_axis[-1]: coo(c - face.c_start, face.c_axis[0]),
-                    face.plane[-1]: coo(cs, face.plane[0]),
+                    face.r_axis: ar, -face.r_axis: cs - 1 - ar,
+                    face.c_axis: ac, -face.c_axis: cs - 1 - ac,
+                    face.plane: cs, -face.plane: -1,
                 }
-                return result['x'], result['y'], result['z'], face
+                return Vec3D(result[X_AX], result[Y_AX], result[Z_AX]), face
 
 
 @dataclass
@@ -283,20 +260,33 @@ class CubeFace:
     def conv_facing_to_3d(self, facing):
         dr, dc = facing
         result = {
-            self.r_axis[-1]: -dr if self.r_axis[0] == '-' else dr,
-            self.c_axis[-1]: -dc if self.c_axis[0] == '-' else dc,
-            self.plane[-1]: 0,
+            self.r_axis: dr, -self.r_axis: -dr,
+            self.c_axis: dc, -self.c_axis: -dc,
+            self.plane: 0, -self.plane: -0,
         }
-        return result['x'], result['y'], result['z']
+        return Vec3D(result[X_AX], result[Y_AX], result[Z_AX])
 
-    def conv_3d_to_facing(self, dx, dy, dz):
-        dirs = {'x': dx, 'y': dy, 'z': dz, '-x': -dx, '-y': -dy, '-z': -dz}
+    def conv_3d_to_facing(self, dir3d):
+        dx, dy, dz = dir3d
+        dirs = {
+            X_AX: dx, -X_AX: -dx,
+            Y_AX: dy, -Y_AX: -dy,
+            Z_AX: dz, -Z_AX: -dz,
+        }
         return Vec2D(dirs[self.r_axis], dirs[self.c_axis])
 
-    def conv_3d_to_2d(self, x, y, z):
+    def conv_3d_to_2d(self, pos3d):
+        x, y, z = pos3d
         cs = self.map.cube_size
-        dirs = {'x': x, 'y': y, 'z': z, '-x': cs-1-x, '-y': cs-1-y, '-z': cs-1-z}
-        return Vec2D(self.r_start+dirs[self.r_axis], self.c_start+dirs[self.c_axis])
+        coords = {
+            X_AX: x, -X_AX: cs - 1 - x,
+            Y_AX: y, -Y_AX: cs - 1 - y,
+            Z_AX: z, -Z_AX: cs - 1 - z,
+        }
+        return Vec2D(
+            self.r_start + coords[self.r_axis],
+            self.c_start + coords[self.c_axis],
+        )
 
 map_3d = get_map(Map3D)
 
