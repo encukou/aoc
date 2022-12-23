@@ -88,12 +88,12 @@ class BaseMap(dict):
                     print(' ', end=' ')
             print()
 
-    def solve(self):
+    def solve(self, instructions):
         facing = Vec2D(0, 1)
         current_tile = self.initial_tile
         journey = [(current_tile.pos, facing.char)]
         self.draw(journey)
-        for instruction in re.split('(\d+)', data[-1]):
+        for instruction in re.split('(\d+)', instructions):
             if not instruction:
                 continue
             print('do', instruction)
@@ -146,7 +146,7 @@ class WraparoundTile(BaseTile):
 class WraparoundMap(BaseMap):
     tile_factory = WraparoundTile
 
-print('*** part 1:', WraparoundMap(data).solve())
+print('*** part 1:', WraparoundMap(data).solve(data[-1]))
 
 class Vec3D(namedtuple('_', ('x', 'y', 'z'))):
     """A 2D vector (or point) with (x, y, z) coordinates"""
@@ -288,4 +288,4 @@ class CubeFace:
             self.c_start + coords[self.c_axis],
         )
 
-print('*** part 2:', Map3D(data).solve())
+print('*** part 2:', Map3D(data).solve(data[-1]))
