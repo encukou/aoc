@@ -54,6 +54,10 @@ class Vec2D(namedtuple('_', ('r', 'c'))):
             ro = co = other
         return Vec2D(rs * ro, cs * co)
 
+    def __abs__(self):
+        r, c = self
+        return abs(r) + abs(c)
+
 MOVE_CHOICES = Vec2D(0, 0), *(Vec2D.from_char(c) for c in '^>v<')
 
 @dataclass
@@ -82,6 +86,7 @@ class Problem:
             | {Vec2D(-1, c): Vec2D(0, 0) for c in range(-1, csz+1)}
             | {Vec2D(-2, c): Vec2D(0, 0) for c in range(-1, csz+1)}
             | {Vec2D(rsz, c): Vec2D(0, 0) for c in range(-1, csz+1)}
+            | {Vec2D(rsz+1, c): Vec2D(0, 0) for c in range(-1, csz+1)}
         )
         del self.walls[-1, 0]
         del self.walls[rsz, csz-1]
@@ -111,7 +116,7 @@ class Problem:
         rsz, csz = self.size
         if bests:
             bests = Counter(p for p, t in bests)
-        for r in range(-2, rsz+1):
+        for r in range(-2, rsz+2):
             for c in range(-1, csz+1):
                 if (r, c) in self.walls:
                     print('#', end=' ')
@@ -123,10 +128,22 @@ class Problem:
                     print('.', end=' ')
             print('')
 
-    def solve(self):
-        self.draw(turn_no=0)
+    def solve(self, initial_turn=0, reverse_trip=False):
+        self.draw(turn_no=initial_turn)
         rsz, csz = self.size
-        to_visit = [Node(rsz+csz+1, 0, Vec2D(-1, 0), self)]
+        if not reverse_trip:
+            initial_pos = Vec2D(-1, 0)
+            goal_pos = Vec2D(rsz, csz-1)
+        else:
+            initial_pos = Vec2D(rsz, csz-1)
+            goal_pos = Vec2D(-1, 0)
+        to_visit = [Node(
+            rsz+csz+1+initial_turn,
+            initial_turn,
+            initial_pos,
+            self,
+            goal_pos=goal_pos,
+        )]
         visited = set()
         bests = {}
         while to_visit:
@@ -142,11 +159,12 @@ class Problem:
                     continue
             bests[best_key] = node
 
-            print('pop', node)
+            if len(visited) % 1_000 == 0:
+                print(len(visited), 'pop', node)
             if len(visited) % 1_000_000 == 0:
                 self.draw(bests=bests, turn_no=node.turns_taken)
 
-            if node.pos[0] >= rsz:
+            if node.pos == goal_pos:
                 print('goal:')
                 n = node
                 hist = {}
@@ -160,7 +178,7 @@ class Problem:
                 return node.turns_taken
 
             for nxt in node.gen_nexts():
-                print('psh', nxt)
+                #print('psh', nxt)
                 heappush(to_visit, nxt)
 
 @dataclass(frozen=True, order=True)
@@ -169,6 +187,7 @@ class Node:
     turns_taken: int
     pos: Vec2D
     problem: Problem = field(compare=False, repr=False)
+    goal_pos: Vec2D = field(compare=False, repr=False)
     prev: "Node" = field(compare=False, repr=False, default=None)
 
     def gen_nexts(self):
@@ -182,7 +201,7 @@ class Node:
                 continue
             yield replace(
                 self,
-                optimistic_estimate=new_turns+sum(size-new_pos)-1,
+                optimistic_estimate=new_turns+abs(self.goal_pos-new_pos),
                 turns_taken=new_turns,
                 pos=new_pos,
                 prev=self,
@@ -193,6 +212,9 @@ if 1:
     for b in range(warmup.period):
         warmup.draw(b)
 
-print('*** part 1:', Problem(data).solve())
+there = Problem(data).solve()
+print('*** part 1:', there)
 
-print('*** part 2:', ...)
+back = Problem(data).solve(there, reverse_trip=True)
+there_again = Problem(data).solve(back)
+print('*** part 2:', there_again)
