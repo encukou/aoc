@@ -30,20 +30,12 @@ def decimal_to_snafu(num):
     if num == 0:
         return '0'
     digits = []
-    max_num_digits = math.ceil(math.log(abs(num)/2, 5)) + 1
-    print('N', num, max_num_digits)
-    for order in reversed(range(max_num_digits)):
-        so_far = ''.join(digits)
-        # Which digit is closest?
-        dig = min(
-            DIGITS,
-            key=lambda d: abs(num/(5**order) - snafu_to_decimal(d)),
-        )
-        if dig != '0' or digits:
-            digits.append(dig)
-        print(f'{num=} {dig=}')
-        num -= DIGITS[dig] * (5**order)
-    return ''.join(digits)
+    while num:
+        num, remainder = divmod(num, 5)
+        digits.append('012=-'[remainder])
+        if remainder > 2:
+            num += 1
+    return ''.join(reversed(digits))
 
 if TEST:
     for snafu in data:
