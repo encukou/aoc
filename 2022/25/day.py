@@ -4,7 +4,7 @@ import math
 data = sys.stdin.read().splitlines()
 print(data)
 
-TEST = False
+TEST = True
 
 DIGITS = {
     '=': -2,
@@ -16,25 +16,23 @@ DIGITS = {
 TO_DIGITS = {n: d for d, n in DIGITS.items()}
 
 def snafu_to_decimal(snafu):
-    order = 1
     number = 0
-    for char in reversed(snafu):
-        number += DIGITS[char] * order
-        order *= 5
+    for char in snafu:
+        number *= 5
+        number += DIGITS[char]
     return number
  
-decimals = [snafu_to_decimal(n) for n in data]
-print(decimals)
+numbers = [snafu_to_decimal(n) for n in data]
+print(numbers)
 
 def decimal_to_snafu(num):
     if num == 0:
         return '0'
     digits = []
     while num:
-        num, remainder = divmod(num, 5)
+        remainder = num % 5
         digits.append('012=-'[remainder])
-        if remainder > 2:
-            num += 1
+        num = (num + 5//2) // 5
     return ''.join(reversed(digits))
 
 if TEST:
@@ -54,7 +52,7 @@ if TEST:
         rt = snafu_to_decimal(decimal_to_snafu(n))
         assert n == rt
 
-print('*** part 1:', decimal_to_snafu(sum(decimals)))
+print('*** part 1:', decimal_to_snafu(sum(numbers)))
 
 
 
