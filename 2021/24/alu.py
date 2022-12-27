@@ -234,3 +234,6 @@ for conditions, digits in cases:
 
 best = [max(d) for d in max(candidates)]
 print('Part 1:', ''.join(str(d) for d in best))
+
+smallest = [min(d) for d in min(candidates)]
+print('Part 2:', ''.join(str(d) for d in smallest))
