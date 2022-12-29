@@ -2,7 +2,7 @@ import sys
 
 data = sys.stdin.read()
 
-def solve(instructions):
+def walk(instructions):
     r, c = 0, 0
     dr, dc = -1, 0
     for turn_distance in instructions.split(', '):
@@ -14,12 +14,30 @@ def solve(instructions):
             dr, dc = -dc, dr
         else:
             raise ValueError(turn)
-        r += dr * distance
-        c += dc * distance
+        for i in range(distance):
+            r += dr
+            c += dc
+            yield r, c
+
+def endpoint(instructions):
+    for r, c in walk(instructions):
+        pass
     return abs(r) + abs(c)
 
-assert solve('R2, L3') == 5
-assert solve('R2, R2, R2') == 2
-assert solve('R5, L5, R5, R3') == 12
+assert endpoint('R2, L3') == 5
+assert endpoint('R2, R2, R2') == 2
+assert endpoint('R5, L5, R5, R3') == 12
 
-print(f'*** part 1: {solve(data)}')
+print(f'*** part 1: {endpoint(data)}')
+
+def visited_twice(instructions):
+    been = set()
+    for pos in walk(instructions):
+        if pos in been:
+            r, c = pos
+            return abs(r) + abs(c)
+        been.add(pos)
+
+assert visited_twice('R8, R4, R4, R8') == 4
+
+print(f'*** part 2: {visited_twice(data)}')
