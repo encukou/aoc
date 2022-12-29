@@ -38,4 +38,4 @@ print(f'*** part 1: {get_password(data)}')
 
 assert get_password('abc', part=2) == '05ace8e3'
 
-print(f'*** part 1: {get_password(data, part=2)}')
+print(f'*** part 2: {get_password(data, part=2)}')
