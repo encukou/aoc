@@ -1,0 +1,30 @@
+cpy a d     a=IN                      d=IN
+cpy 9       c                     c=9   IN+282*9
+cpy 282 b              b=282        |   |
+inc d                    |          |   |
+dec b                    |          |   |
+jnz b -2                 0          |   |
+dec c                    |          |   |
+jnz c -5                 '          0   '
+cpy d a       IN+282*9
+jnz 0 0  NOP
+cpy a b                  IN+282*9
+cpy 0 a       0
+cpy 2 c                             2
+jnz b 2  -, <,
+jnz 1 6   |  | -,
+dec b    <'  |  |        -1,-2
+dec c        |  |                   1,0
+jnz c -4  ---'  |
+inc a           |
+jnz 1 -7        |
+cpy 2 b        <'        2
+jnz c 2
+jnz 1 4
+dec b
+dec c
+jnz 1 -4
+jnz 0 0
+out b
+jnz a -19
+jnz 1 -21
