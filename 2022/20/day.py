@@ -4,20 +4,6 @@ data = sys.stdin.read().splitlines()
 
 PRINTING = True
 
-def abs_sgn(x):
-    if x > 0:
-        return x, 1
-    if x < 0:
-        return -x, -1
-    return 0, 0
-
-def sgn(x):
-    if x > 0:
-        return 1
-    if x < 0:
-        return -1
-    return 0
-
 def solve(key, rounds):
     numbers = list(enumerate(int(line) * key for line in data))
 
