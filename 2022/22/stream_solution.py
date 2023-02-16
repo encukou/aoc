@@ -52,13 +52,13 @@ class Map:
             for col in range(self.end_col):
                 symbol = overlay.get((row, col))
                 if symbol:
-                    print(symbol, end='')
+                    print(symbol, end=' ')
                     continue
                 tile = self.tiles.get((row, col))
                 if tile is None:
-                    print(' ', end='')
+                    print(' ', end=' ')
                 else:
-                    print(tile, end='')
+                    print(tile, end=' ')
             print()
 
     def neighbor(self, coords, facing):
@@ -70,7 +70,10 @@ class Map:
         result = row, col
         if self.tiles.get(result, '-') in '.#':
             return result, facing
-        return self.wrap(coords, facing)
+        #self.draw(self.history)
+        result_coords, result_facing = self.wrap(coords, facing)
+        self.draw(self.history | {result_coords: facing_symbol(result_facing)})
+        return result_coords, result_facing
 
     def wrap(self, coords, facing):
         row, col = coords
@@ -95,9 +98,11 @@ class Map:
         pos = self.start
         facing = 0, 1
         print(instructions)
-        history = {pos: facing_symbol(facing)}
-        self.draw(history)
-        for instruction in TURN_RE.split(instructions):
+        self.history = {}
+        self.add_history(pos, facing)
+        for i, instruction in enumerate(TURN_RE.split(instructions)):
+            if i > 300000:
+                exit(1)
             match instruction:
                 case 'L':
                     row, col = facing
@@ -114,14 +119,9 @@ class Map:
                             break
                         pos = new_pos
                         facing = new_facing
-                        history[pos] = (
-                            facing_symbol(facing)
-                        )
-                        self.draw(history)
-            history[pos] = (
-                facing_symbol(facing)
-            )
-            self.draw(history)
+                        self.add_history(pos, facing)
+            self.add_history(pos, facing)
+            #self.draw(self.history)
         row, col = pos
         print(pos)
         return (
@@ -130,11 +130,18 @@ class Map:
             + facing_score(facing)
         )
 
+    def add_history(self, pos, facing):
+        self.history[pos] = (
+            facing_symbol(facing)
+        )
+        #self.draw(self.history)
+        print('step:', pos, facing)
+
 with open('smallinput.txt') as f:
     the_map = Map(f)
     instructions = f.readline().strip()
 
-print(the_map.solve(instructions))
+#print(the_map.solve(instructions))
 
 @dataclasses.dataclass
 class Face:
@@ -159,7 +166,7 @@ class Map3D(Map):
         self.add_face(Face(
             start=self.start,
             row_axis=(1, 0, 0),
-            col_axis=(0, -1, 0),
+            col_axis=(0, 1, 0),
             plane=(0, 0, 1),
         ))
         pprint(self.faces)
@@ -224,11 +231,13 @@ class Map3D(Map):
         x += fx
         y += fy
         z += fz
+        print('step to', (x, y, z))
         new_facing = neg(face.plane)
         dx, dy, dz = new_facing
         x += dx
         y += dy
         z += dz
+        print('step to', (x, y, z))
         new_coord3d = x, y, z
         new_face = self.get_face_from_3d(new_coord3d)
         print(new_face)
@@ -250,15 +259,21 @@ class Map3D(Map):
     def conv_2d_to_3d(self, face, coords, facing):
         cr, cc = coords
         sr, sc = face.start
-        r = cr - sr - self.side_len // 2
-        c = cc - sc - self.side_len // 2
+        r = cr - sr
+        c = cc - sc
         rx, ry, rz = face.row_axis
         cx, cy, cz = face.col_axis
         px, py, pz = face.plane
-        plane_coord = self.side_len // 2
-        x = rx * r + cx * c + px * plane_coord
-        y = ry * r + cy * c + py * plane_coord
-        z = rz * r + cz * c + pz * plane_coord
+        def transform(dir_component, pos_component):
+            if dir_component == 0:
+                return 0
+            if dir_component == 1:
+                return pos_component
+            if dir_component == -1:
+                return self.side_len - pos_component - 1
+        x = transform(rx, r) + transform(cx, c) + transform(px, self.side_len)
+        y = transform(ry, r) + transform(cy, c) + transform(py, self.side_len)
+        z = transform(rz, r) + transform(cz, c) + transform(pz, self.side_len)
 
         fr, fc = facing
         fx = rx * fr + cx * fc
@@ -267,39 +282,50 @@ class Map3D(Map):
         return (x, y, z), (fx, fy, fz)
 
     def get_face_from_3d(self, coords3d):
-        halflen = self.side_len // 2
         x, y, z = coords3d
-        if x == -halflen:
+        if x == -1:
             return self.faces[-1, 0, 0]
-        if x == halflen:
-            return self.faces[0, 1, 0]
-        if y == -halflen:
+        if x == self.side_len:
+            return self.faces[1, 0, 0]
+        if y == -1:
             return self.faces[0, -1, 0]
-        if y == halflen:
+        if y == self.side_len:
             return self.faces[0, 1, 0]
-        if z == -halflen:
+        if z == -1:
             return self.faces[0, 0, -1]
-        if z == halflen:
+        if z == self.side_len:
             return self.faces[0, 0, 1]
         raise ValueError(coords3d)
 
     def conv_3d_to_2d(self, face, coords3d, facing3d):
         sr, sc = face.start
-        sr += self.side_len // 2
-        sc += self.side_len // 2
         # sr, sc: center of square
         x, y, z = coords3d
         rx, ry, rz = face.row_axis
         cx, cy, cz = face.col_axis
-        r = rx * x + ry * y + rz * z
-        c = cx * x + cy * y + cz * z
+        def transform(dir_component, pos_component):
+            if dir_component == 0:
+                return 0
+            if dir_component == 1:
+                return pos_component
+            if dir_component == -1:
+                return self.side_len - pos_component - 1
+        r = transform(rx, x) + transform(ry, y) + transform(rz, z)
+        c = transform(cx, x) + transform(cy, y) + transform(cz, z)
 
         fx, fy, fz = facing3d
         fr = rx * fx + ry * fy + rz * fz
         fc = cx * fx + cy * fy + cz * fz
         return (r + sr, c + sc), (fr, fc)
 
-with open('smallinput.txt') as f:
+    def add_history(self, coords, facing):
+        super().add_history(coords, facing)
+        face = self.get_face_from_2d(coords)
+        coord3d, facing3d = self.conv_2d_to_3d(
+            face, coords, facing)
+        print('3d step:', coord3d, facing3d, 'face:', face)
+
+with open('input.txt') as f:
     the_map = Map3D(f)
     instructions = f.readline().strip()
 
