@@ -16,6 +16,8 @@ CONDOPS = {
 
 registers = defaultdict(int)
 
+max_ever = 0
+
 for row in data:
     print(row)
     print(registers)
@@ -23,10 +25,8 @@ for row in data:
     assert _if == 'if'
     if CONDOPS[condop](registers[condreg], int(condarg)):
         registers[reg] += {'inc': +1, 'dec': -1}[op] * int(arg)
+        max_ever = max(max_ever, registers[reg])
 
 print('*** part 1:', max(registers.values()))
 
-
-
-
-print('*** part 2:', ...)
+print('*** part 2:', max_ever)
