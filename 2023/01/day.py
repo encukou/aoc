@@ -1,6 +1,7 @@
 import sys
 
-data = sys.stdin.read().splitlines()
+inputs = sys.stdin.read().split('---')
+data = inputs[0].strip().splitlines()
 print(data)
 
 total = 0
@@ -10,17 +11,8 @@ for word in data:
 
 print('*** part 1:', total)
 
-if len(data) < 5:
-    data = """
-two1nine
-eightwothree
-abcone2threexyz
-xtwone3four
-4nineeightseven2
-zoneight234
-7pqrstsixteen
-""".strip().splitlines()
-print(data)
+
+data = inputs[-1].strip().splitlines()
 
 import regex
 DIGITS = 'one, two, three, four, five, six, seven, eight, nine'.split(', ')
