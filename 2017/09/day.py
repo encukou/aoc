@@ -3,11 +3,12 @@ import sys
 data = sys.stdin.read().strip()
 print(data)
 
-def score(stream):
+def solve(stream):
     print(stream)
     state = 'group'
     nest_level = 0
     current_score = 0
+    garbage_count = 0
     for char in stream:
         print(state, char)
         match state, char:
@@ -27,9 +28,13 @@ def score(stream):
             case 'escape', _:
                 state = 'garbage'
             case 'garbage', _:
-                pass
+                garbage_count += 1
             case _: raise ValueError((state, char))
-    return current_score
+    return current_score, garbage_count
+
+def score(stream):
+    score, garbage_count = solve(stream)
+    return score
 
 assert score('{}') == 1
 assert score('{{{}}}') == 6
@@ -42,7 +47,18 @@ assert score('{{<a!>},{<a!>},{<a!>},{<ab>}}') == 3
 
 print('*** part 1:', score(data))
 
+def garbage_count(stream):
+    score, garbage_count = solve(stream)
+    return garbage_count
+
+assert garbage_count('<>') == 0
+assert garbage_count('<random characters>') == 17
+assert garbage_count('<<<<>') == 3
+assert garbage_count('<{!>}>') == 2
+assert garbage_count('<!!>') == 0
+assert garbage_count('<!!!>>') == 0
+assert garbage_count('<{o"i!a,<{i<a>')
 
 
 
-print('*** part 2:', ...)
+print('*** part 2:', garbage_count(data))
