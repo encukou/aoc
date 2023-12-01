@@ -4,10 +4,10 @@ from itertools import count
 data = sys.stdin.read().strip()
 print(data)
 
-def part1():
-    banks = [int(b) for b in data.split()]
+def solve(banks):
+    banks = list(banks)
     seen = set()
-    for turn in count(start=1):
+    for turn in count():
         print(banks)
 
         hand = max(banks)
@@ -20,13 +20,15 @@ def part1():
 
         new = tuple(banks)
         if new in seen:
-            return turn
+            return turn, banks
         seen.add(new)
 
 
-print('*** part 1:', part1())
+part1, new_state = solve([int(b) for b in data.split()])
+print('*** part 1:', part1+1)
 
 
 
 
-print('*** part 2:', ...)
+part2, _ = solve(new_state)
+print('*** part 2:', part2)
