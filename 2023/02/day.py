@@ -1,7 +1,7 @@
 import sys
 import re
 import operator
-import functools
+import math
 
 data = sys.stdin.read().splitlines()
 print(data)
@@ -51,7 +51,7 @@ for game_id, draws in gen_data():
         for count, color in draw:
             fewest[color] = max(fewest.get(color, 0), count)
             print(f'{game_id}: {count} {color}. {fewest=}')
-    power = functools.reduce(operator.mul, fewest.values())
+    power = math.prod(fewest.values())
     score += power
     print(f'... {game_id=} {power=} {score=}')
 
