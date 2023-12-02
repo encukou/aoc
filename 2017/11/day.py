@@ -18,7 +18,7 @@ print(data)
 #
 #     +f      -b
 
-def distance(path):
+def solve(path):
     print(path)
     c, f, b = 0, 0, 0
     for direction in path.split(','):
@@ -46,8 +46,12 @@ def distance(path):
             case _:
                 raise ValueError(direction)
         print(direction, c, f, b)
-    result = sum([abs(c), abs(f), abs(b)]) // 2
-    print(result)
+        result = sum([abs(c), abs(f), abs(b)]) // 2
+        yield result
+
+def distance(data):
+    for result in solve(data):
+        pass
     return result
 
 assert distance('ne,ne,ne') == 3
@@ -58,7 +62,7 @@ assert distance('se,sw,se,sw,sw') == 3
 
 print('*** part 1:', distance(data))
 
+def furthest(data):
+    return max(solve(data))
 
-
-
-print('*** part 2:', ...)
+print('*** part 2:', furthest(data))
