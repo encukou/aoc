@@ -1,4 +1,5 @@
 import sys
+from itertools import count
 
 data = sys.stdin.read().splitlines()
 print(data)
@@ -28,31 +29,45 @@ def draw(scanners, layers, location=-1):
             print(f'{paren[0]}{sigil}{paren[-1]} ', end='')
         print()
 
-scanners = {depth: 0 for depth in layers}
-scanner_directions = {depth: 1 for depth in layers}
+def solve(delay=0):
+    scanners = {depth: 0 for depth in layers}
+    scanner_directions = {depth: 1 for depth in layers}
 
-print(scanners, layers, scanner_directions)
-draw(scanners, layers)
+    print(delay, scanners, layers, scanner_directions)
+    #draw(scanners, layers)
 
-severity = 0
-for location in range(max(layers)+1):
-    print(f'Picosecond {location}:')
-    draw(scanners, layers, location)
-    if scanners.get(location, -1) == 0:
-        severity += location * layers[location]
-    for scanner_id in scanners:
-        scanners[scanner_id] += scanner_directions[scanner_id]
-        if scanners[scanner_id] >= layers[scanner_id]:
-            scanners[scanner_id] -= 2
-            scanner_directions[scanner_id] = -1
-        if scanners[scanner_id] < 0:
-            scanners[scanner_id] += 2
-            scanner_directions[scanner_id] = +1
-    draw(scanners, layers, location)
+    severity = crashes = 0
+    for location in range(-delay, max(layers)+1):
+        #print(f'Picosecond {location}: ({delay=})')
+        if location >= 0:
+            if scanners.get(location, -1) == 0:
+                new = location * layers[location]
+                severity += new
+                crashes += 1
+                print(f'***{new=} {severity=}**')
+                if delay:
+                    break
+            #draw(scanners, layers, location)
+        for scanner_id in scanners:
+            scanners[scanner_id] += scanner_directions[scanner_id]
+            if scanners[scanner_id] >= layers[scanner_id]:
+                scanners[scanner_id] -= 2
+                scanner_directions[scanner_id] = -1
+            if scanners[scanner_id] < 0:
+                scanners[scanner_id] += 2
+                scanner_directions[scanner_id] = +1
+        #draw(scanners, layers, location)
+    return severity, crashes
 
-print('*** part 1:', severity)
+def get_severity():
+    severity, crashes = solve()
+    return severity
 
+print('*** part 1:', get_severity())
 
+for delay in count():
+    severity, crashes = solve(delay)
+    if not crashes:
+        break
 
-
-print('*** part 2:', ...)
+print('*** part 2:', delay)
