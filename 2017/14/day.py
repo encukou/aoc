@@ -32,16 +32,27 @@ def knothash(data):
     knot = ''.join(f'{n:02x}' for n in dense_hash)
     return knot
 
-total = 0
+used_coords = set()
 for i in range(128):
     khash = int(knothash(f'{data}-{i}'), 16)
     bits = f'{khash:0128b}'
-    print(bits)
-    total += khash.bit_count()
+    used_coords.update(((i, n) for n, b in enumerate(bits) if b == '1'))
+    print(bits.replace('0', '.').replace('1', '#'))
 
-print('*** part 1:', total)
-
-
+print('*** part 1:', len(used_coords))
 
 
-print('*** part 2:', ...)
+num_regions = 0
+while used_coords:
+    num_regions += 1
+    to_remove = {used_coords.pop()}
+    while to_remove:
+        r, c = to_remove.pop()
+        for dr, dc in (+1, 0), (0, -1), (0, +1), (-1, 0):
+            neighbor = r+dr, c+dc
+            if neighbor in used_coords:
+                to_remove.add(neighbor)
+                used_coords.discard(neighbor)
+
+
+print('*** part 2:', num_regions)
