@@ -1,131 +1,36 @@
-import sys
-from pprint import pprint
-import operator
+import sys  # Needed so you can run this code using: python day.py < input.txt
 
-data = sys.stdin.read().splitlines()
-print(data)
+def solve_anything(problem, data):
 
-seeds = list(int(s) for s in data[0].split(':')[-1].split())
-print(f'{seeds}')
+    ( lambda callable: [ print ( 3 * "*" , f"part {num}:" , ( lambda do : next
+    ( iter ( min ( reduce ( ( lambda float, sum : [ ( lambda sub: [ hex + sub,
+    sub + bin, ] ) ( next ( iter ( ( * ( int for oct , bin , int in sum if oct
+    <= hex < bin ) , len ( ( ) , ) , ) , ) ) ) for hex, bin in ( lambda clear,
+    append , pop : ( id for id , * dir in ( [ ( id, dir , ) ] if not append or
+    append [ len ( [ ] ) ] >= dir else ( id - id, clear . append (( id, dir ))
+    or append. pop ( len ( ( ), ), ), ) if append [ len ( ( ) ) ] <= id else (
+    [ id , append [ dir - dir ] ] , clear. append ( [ append [ int ( ) ] , dir
+    ] , ) , ) for id , dir in pop ( clear, pop ) ) if id ) ) ( list ( reversed
+    ( sorted ( ( lambda min : ( lambda tuple : [ any for any , * len in ( next
+    ( iter ( enumerate ( [ tuple. append ( max ( next ( reversed ( int , ) ) ,
+    tuple . pop ( ) ) ) ] ) ) ) if next ( iter ( int, ) ) <= next ( reversed (
+    tuple ) ) else ( list ( tuple ) , tuple . clear ( ), tuple . extend (int),
+    ) for int in min ) if any ] + [ tuple ] ) ( next ( iter ( min ,) ,) ,) ) (
+    sorted ( float ) ) ) ) ) , sorted ( set ( zip for range in [ eye for *eye,
+    sum in sum ] for zip in range ) ) , ( lambda push, pop : ( ( yield ( push.
+    pop ( ) ) ) , ( yield from pop ( push, pop ) ) ) if push else pop ) ) ] ),
+    list ( ( lambda zip : ( id for id , * dir in [ ( ( ( list ( zip ) ) , zip.
+    clear ( ) ) if not globals else [ zip . clear ( ), ] if globals . endswith
+    ( chr ( len ( problem ) *-~ True ) ) else [ zip. append ( * ( ( + past , +
+    present ++ past , future +- past , ) for future , past, present in [ [ int
+    ( object , ) for object in globals . split( ) ] , ] ) ) ] ) for globals in
+    data [ -~+ True : ] + [ str ( ) , ] ] if id ) ) ( [ ] ) ) , do , ) ) ) ) )
+    ( [ [ min, min + len ] for min , len in zip ( callable [ ::num ] , range )
+    ] ) ) for num, range in enumerate ( ( False, ( True for map in callable ),
+    callable [ True or False ::len ( str ( tuple ( ( ) , ) , ) , )] , ) , ) if
+    num > False ] ) ( list ( int ( iter , ) for iter in data [ False ] . split
+    ( chr ( len ( problem ) *-~+ True ) , ) [ +~ len ( [ ] ) ] . split ( ) ) )
 
-assert not data[1]
+from functools import reduce  # This was builtin in Python 2. I like builtins.
 
-maps = []
-for line in data[2:] + ['']:
-    print(line)
-    if not line:
-        maps.append(current_map)
-        current_map = {}
-        current_key = None
-    elif line.endswith(':'):
-        current_key, sep, next_key = line.split(' ')[0].split('-')
-        current_map = []
-    else:
-        next_start, current_start, length = [int(n) for n in line.split()]
-        current_map.append((
-            range(current_start, current_start + length),
-            next_start - current_start,
-        ))
-
-pprint(maps)
-
-pprint(maps)
-def map_ranges(current_ranges, current_map):
-    print(end='C '); pprint(current_map)
-    prev = list(current_ranges)
-    print('R', current_ranges)
-    current_ranges = merge_ranges(current_ranges)
-    print('M', current_ranges)
-    current_ranges = split_ranges(
-        current_ranges,
-        [r.start for r, d in current_map] + [r.stop for r, d in current_map]
-    )
-    result = []
-    for r in current_ranges:
-        for mr, d in current_map:
-            if r.start in mr:
-                break
-        else:
-            d = 0
-        new = range(r.start+d, r.stop+d)
-        print(f'{r} {d:+} -> {new}')
-        result.append(new)
-    assert sum(len(r) for r in prev) == sum(len(r) for r in result)
-    return result
-
-def range_key(r):
-    return r.start
-
-def split_ranges(ranges, points):
-    remaining = sorted(ranges, key=range_key)
-    verify_ranges(remaining)
-    remaining.reverse()
-    points = sorted(set(points), reverse=True)
-    result = []
-    while remaining:
-        print('S', result, remaining, points)
-        current = remaining.pop()
-        if not points:
-           result.append(current)
-        elif points[-1] <= current.start:
-            remaining.append(current)
-            points.pop()
-        elif points[-1] >= current.stop:
-            result.append(current)
-        elif points[-1] in current:
-            result.append(range(current.start, points[-1]))
-            remaining.append(range(points[-1], current.stop))
-        else:
-            raise ValueError()
-    print('s', result, remaining, points)
-    assert sum(len(r) for r in ranges) == sum(len(r) for r in result)
-    verify_ranges(result, op=operator.__le__)
-    return result
-
-def merge_ranges(ranges):
-    ranges.sort(key=range_key)
-    result = []
-    current = ranges.pop(0)
-    for next in ranges:
-        if next.start <= current.stop:
-            current = range(current.start, max(next.stop, current.stop))
-        else:
-            result.append(current)
-            current = next
-    result.append(current)
-    verify_ranges(result)
-    return result
-
-def verify_ranges(ranges, op=operator.__lt__):
-    for r in ranges:
-        assert r.start < r.stop
-    for a, b in zip(ranges, ranges[1:]):
-        print('V', a, b, op)
-        assert op(a.stop, b.start)
-
-def solve(current_ranges, maps):
-    print(f'{current_ranges=}')
-    for i, current_map in enumerate(maps):
-        print()
-        print(f'MAP {i}')
-        current_ranges = map_ranges(current_ranges, current_map)
-        current_ranges.sort(key=range_key)
-        print(f'{current_ranges}')
-        current_ranges = merge_ranges(current_ranges)
-        print(f'{current_ranges}')
-
-    print(f'{current_ranges}')
-    return current_ranges[0].start
-
-current_ranges = [range(s, s + 1) for s in seeds]
-
-print('*** part 1:', solve(current_ranges, maps))
-# 433542010 wrong
-
-print()
-current_ranges = [range(s, s + l) for s, l in zip(seeds[0::2], seeds[1::2])]
-
-print('*** part 2:', solve(current_ranges, maps))
-# 54305338 too high
-# 137201536 too high
-# 10834441 too high
+solve_anything('the correct solution of day 5', sys.stdin.read().splitlines())
