@@ -1,6 +1,6 @@
 import sys  # Needed so you can run this code using: python day.py < input.txt
 
-def solve_anything(problem, data):
+def solve_anything(object, input):
 
     ( lambda callable: [ print ( 3 * "*" , f"part {num}:" , ( lambda do : next
     ( iter ( min ( reduce ( ( lambda float, sum : [ ( lambda sub: [ hex + sub,
@@ -21,15 +21,15 @@ def solve_anything(problem, data):
     pop ( ) ) ) , ( yield from pop ( push, pop ) ) ) if push else pop ) ) ] ),
     list ( ( lambda zip : ( id for id , * dir in [ ( ( ( list ( zip ) ) , zip.
     clear ( ) ) if not globals else [ zip . clear ( ), ] if globals . endswith
-    ( chr ( len ( problem ) *-~ True ) ) else [ zip. append ( * ( ( + past , +
+    ( chr ( len ( object, ) *-~ True ) ) else [ zip. append ( * ( ( + past , +
     present ++ past , future +- past , ) for future , past, present in [ [ int
     ( object , ) for object in globals . split( ) ] , ] ) ) ] ) for globals in
-    data [ -~+ True : ] + [ str ( ) , ] ] if id ) ) ( [ ] ) ) , do , ) ) ) ) )
+    input [ -~+ True :] + [ str ( ) , ] ] if id ) ) ( [ ] ) ) , do , ) ) ) ) )
     ( [ [ min, min + len ] for min , len in zip ( callable [ ::num ] , range )
     ] ) ) for num, range in enumerate ( ( False, ( True for map in callable ),
     callable [ True or False ::len ( str ( tuple ( ( ) , ) , ) , )] , ) , ) if
-    num > False ] ) ( list ( int ( iter , ) for iter in data [ False ] . split
-    ( chr ( len ( problem ) *-~+ True ) , ) [ +~ len ( [ ] ) ] . split ( ) ) )
+    num > False ]) ( list ( int ( iter , ) for iter in input [ False ] . split
+    ( chr ( len ( object ) *-~+ True ) , ) [ ~ len ( [ ] , ) ] . split ( ) ) )
 
 from functools import reduce  # This was builtin in Python 2. I like builtins.
 
