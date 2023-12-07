@@ -4,76 +4,58 @@ import collections
 data = sys.stdin.read().splitlines()
 print(data)
 
-CARDS = {c: v for v, c in enumerate(reversed('AKQJT98765432'))}
+CARD_SCORES = {card: val for val, card in enumerate(reversed('AKQJT98765432'))}
+
+def score_counts(counts):
+    counts = sorted(counts, reverse=True)
+    match counts:
+        case [5]:
+            return 6
+        case [4, 1]:
+            return 5
+        case [3, 2]:
+            return 4
+        case [3, 1, 1]:
+            return 3
+        case [2, 2, 1]:
+            return 2
+        case [2, 1, 1, 1]:
+            return 1
+        case [1, 1, 1, 1, 1]:
+            return 0
+        case _:
+            raise ValueError(counts)
 
 def key(hand):
-    secondary = tuple(CARDS[c] for c in hand)
-    tp = tuple(n for k, n in collections.Counter(hand).most_common())
-    match tp:
-        case [5]:
-            return 6, secondary
-        case [4, 1]:
-            return 5, secondary
-        case [3, 2]:
-            return 4, secondary
-        case [3, 1, 1]:
-            return 3, secondary
-        case [2, 2, 1]:
-            return 2, secondary
-        case [2, 1, 1, 1]:
-            return 1, secondary
-        case [1, 1, 1, 1, 1]:
-            return 0, secondary
-        case _:
-            raise ValueError()
+    counts = collections.Counter(hand).values()
+    return score_counts(counts), tuple(CARD_SCORES[c] for c in hand)
 
 def fmt_score(score):
     tp, secondary = score
-    return f"{str(tp)}, ({', '.join(format(n, '2d') for n in secondary)})"
+    return f"{str(tp)},({', '.join(format(n, '2d') for n in secondary)})"
 
-lines = (l.split() for l in data)
-hands = sorted((key(hand), hand, int(bid)) for hand, bid in lines)
-winnings = 0
-for line in enumerate(hands, start=1):
-    rank, (score, hand, bid) = line
-    new = rank * bid
-    print(f'{rank:4}. {fmt_score(score)}: {hand} @{bid:3} -> {new}')
-    winnings += new
+def solve(key):
+    lines = (l.split() for l in data)
+    hands = sorted((key(hand), hand, int(bid)) for hand, bid in lines)
+    winnings = 0
+    for rank, (score, hand, bid) in enumerate(hands, start=1):
+        winning = rank * bid
+        print(f'{rank:4}. {fmt_score(score)}: {hand} @{bid:3} -> {winning}')
+        winnings += winning
+    return winnings
 
-print('*** part 1:', winnings)
-# 252103402 wrong
+print('*** part 1:', solve(key))
 
-CARDS = {c: v for v, c in enumerate(reversed('AKQT98765432J'))}
+WILD_CARD_SCORES = CARD_SCORES | {'J': -1}
 
-def split_jokers(hand):
-    if 'J' in hand:
-        jidx = hand.index('J')
-        yield from (
-            h
-            for c in CARDS.keys() - {'J'}
-            for h in split_jokers(hand[:jidx] + c + hand[jidx+1:])
-        )
+def wild_key(hand):
+    counter = collections.Counter(hand)
+    n_jokers = counter.pop('J', 0)
+    if counter:
+        best, best_val = counter.most_common(1)[0]
     else:
-        yield hand
+        best = 'A'
+    counter[best] += n_jokers
+    return score_counts(counter.values()), tuple(WILD_CARD_SCORES[c] for c in hand)
 
-def key2(hand):
-    orig_rank, orig_secondary = key(hand)
-    new_rank, new_secondary = max(key(h) for h in split_jokers(hand))
-    return new_rank, orig_secondary
-
-def fmt_score(score):
-    tp, secondary = score
-    return f"{str(tp)}, ({', '.join(format(n, '2d') for n in secondary)})"
-
-lines = (l.split() for l in data)
-hands = sorted((key2(hand), hand, int(bid)) for hand, bid in lines)
-winnings = 0
-for line in enumerate(hands, start=1):
-    rank, (score, hand, bid) = line
-    new = rank * bid
-    print(f'{rank:4}. {fmt_score(score)}: {hand} @{bid:3} -> {new}')
-    winnings += new
-
-
-print('*** part 2:', winnings)
-# 252299873
+print('*** part 2:', solve(wild_key))
