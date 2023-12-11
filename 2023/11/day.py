@@ -5,41 +5,43 @@ import itertools
 data = sys.stdin.read().splitlines()
 print(data)
 
-universe = numpy.array([[1 if c == '#' else 0 for c in line] for line in data])
+def get_expanded_line_map(universe, expansion_rate):
+    result = {}
+    current = 0
+    for r, line in enumerate(universe):
+        if any(line):
+            result[r] = current
+            current += 1
+        else:
+            current += expansion_rate
+    print(result)
+    return result
 
-new_lines = []
-for line in universe:
-    new_lines.append(line)
-    if not any(line):
-        new_lines.append(line)
+def solve(data, expansion_rate):
+    print(data)
 
-universe = numpy.array(new_lines)
+    universe = numpy.array([[1 if c == '#' else 0 for c in line] for line in data])
+    row_map = get_expanded_line_map(universe, expansion_rate)
+    col_map = get_expanded_line_map(universe.T, expansion_rate)
 
-new_lines = []
-for line in universe.T:
-    new_lines.append(line)
-    if not any(line):
-        new_lines.append(line)
+    galaxies = []
+    for r, line in enumerate(data):
+        for c, char in enumerate(line):
+            if char == '#':
+                galaxies.append((row_map[r], col_map[c]))
 
-universe = numpy.array(new_lines).T
-print(universe)
+    total = 0
+    for (r1, c1), (r2, c2) in itertools.product(galaxies, repeat=2):
+        new = abs(r1-r2) + abs(c1-c2)
+        total += new
+        print(new, total)
+    print(total // 2)
+    return total // 2
 
-galaxies = []
-for r, line in enumerate(universe):
-    for c, val in enumerate(line):
-        if val:
-            galaxies.append((r, c))
+print('*** part 1:', solve(data, 2))
 
-total = 0
-for (r1, c1), (r2, c2) in itertools.product(galaxies, repeat=2):
-    new = abs(r1-r2) + abs(c1-c2)
-    total += new
-    print(new, total)
+if len(data) < 50:
+    assert solve(data, 10) == 1030
+    assert solve(data, 100) == 8410
 
-
-print('*** part 1:', total // 2)
-
-
-
-
-print('*** part 2:', ...)
+print('*** part 2:', solve(data, 1_000_000))
