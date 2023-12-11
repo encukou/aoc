@@ -1,5 +1,4 @@
 import sys
-import numpy
 import itertools
 
 data = sys.stdin.read().splitlines()
@@ -20,9 +19,9 @@ def get_expanded_line_map(universe, expansion_rate):
 def solve(data, expansion_rate):
     print(data)
 
-    universe = numpy.array([[1 if c == '#' else 0 for c in line] for line in data])
+    universe = [[1 if c == '#' else 0 for c in line] for line in data]
     row_map = get_expanded_line_map(universe, expansion_rate)
-    col_map = get_expanded_line_map(universe.T, expansion_rate)
+    col_map = get_expanded_line_map(zip(*universe), expansion_rate)
 
     galaxies = []
     for r, line in enumerate(data):
