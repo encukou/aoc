@@ -28,7 +28,7 @@ subprocess.run(
             echo Day {day_num:02}
             set -e -o pipefail
             python day.py < smallinput.txt  2>&1 | python ../check.py expected.txt
-            python day.py < input.txt  2>&1 | python ../check.py
+            time python day.py < input.txt  2>&1 | python ../check.py
         """
     ],
     cwd=day_dir,
