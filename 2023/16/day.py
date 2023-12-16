@@ -25,56 +25,49 @@ def draw_room(data, visited):
                 print(char, end='')
         print()
 
-def energize(start_head, verbose=(len(data) < 20)):
+def energize(start_tip, verbose=(len(data) < 20)):
     visited = set()
-    heads = {start_head}
-    while heads:
-        r, c, direction = head = heads.pop()
+    tips = {start_tip}
+    while tips:
+        tip = tips.pop()
         if verbose:
-            print(head, heads)
-        if head in visited:
+            print(tip, tips)
+        if tip in visited:
             continue
+        r, c, direction = tip
         if r < 0 or c < 0 or r >= len(data) or c >= len(data[r]):
             continue
-        visited.add(head)
+        visited.add(tip)
         if verbose:
             draw_room(data, visited)
         tile = data[r][c]
-        match tile, r, c, direction:
-            case ('.' | '-'), r, c, '>':
-                heads.add((r, c+1, '>'))
-            case ('.' | '-'), r, c, '<':
-                heads.add((r, c-1, '<'))
-            case ('.' | '|'), r, c, 'v':
-                heads.add((r+1, c, 'v'))
-            case ('.' | '|'), r, c, '^':
-                heads.add((r-1, c, '^'))
-            case '|', r, c, ('>' | '<'):
-                heads.add((r-1, c, '^'))
-                heads.add((r+1, c, 'v'))
-            case '-', r, c, ('^' | 'v'):
-                heads.add((r, c-1, '<'))
-                heads.add((r, c+1, '>'))
-            case '/', r, c, '>':
-                heads.add((r-1, c, '^'))
-            case '/', r, c, '^':
-                heads.add((r, c+1, '>'))
-            case '/', r, c, 'v':
-                heads.add((r, c-1, '<'))
-            case '/', r, c, '<':
-                heads.add((r+1, c, 'v'))
-            case '\\', r, c, '>':
-                heads.add((r+1, c, 'v'))
-            case '\\', r, c, '^':
-                heads.add((r, c-1, '<'))
-            case '\\', r, c, '>':
-                heads.add((r+1, c, '>'))
-            case '\\', r, c, '<':
-                heads.add((r-1, c, '^'))
-            case '\\', r, c, 'v':
-                heads.add((r, c+1, '>'))
+        def go(directions):
+            for direction in directions:
+                match direction:
+                    case '>': tips.add((r, c+1, '>'))
+                    case '<': tips.add((r, c-1, '<'))
+                    case 'v': tips.add((r+1, c, 'v'))
+                    case '^': tips.add((r-1, c, '^'))
+                    case _:
+                        raise ValueError(direction)
+        match tile, direction:
+            case ('.' | '-'), '>': go('>')
+            case ('.' | '-'), '<': go('<')
+            case ('.' | '|'), 'v': go('v')
+            case ('.' | '|'), '^': go('^')
+            case '|', ('>' | '<'): go('^v')
+            case '-', ('^' | 'v'): go('<>')
+            case '/', '>': go('^')
+            case '/', '^': go('>')
+            case '/', 'v': go('<')
+            case '/', '<': go('v')
+            case '\\', '>': go('v')
+            case '\\', '^': go('<')
+            case '\\', '>': go('>')
+            case '\\', '<': go('^')
+            case '\\', 'v': go('>')
             case _:
-                raise ValueError(tile, head)
+                raise ValueError(tile, tip)
     return get_energized_tiles(data, visited)
 
 
