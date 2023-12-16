@@ -25,59 +25,71 @@ def draw_room(data, visited):
                 print(char, end='')
         print()
 
-visited = set()
-heads = {(0, 0, '>')}
-while heads:
-    r, c, direction = head = heads.pop()
-    print(head, heads)
-    if head in visited:
-        continue
-    if r < 0 or c < 0 or r >= len(data) or c >= len(data[r]):
-        continue
-    visited.add(head)
-    if len(data) < 20:
-        draw_room(data, visited)
-    tile = data[r][c]
-    match tile, r, c, direction:
-        case ('.' | '-'), r, c, '>':
-            heads.add((r, c+1, '>'))
-        case ('.' | '-'), r, c, '<':
-            heads.add((r, c-1, '<'))
-        case ('.' | '|'), r, c, 'v':
-            heads.add((r+1, c, 'v'))
-        case ('.' | '|'), r, c, '^':
-            heads.add((r-1, c, '^'))
-        case '|', r, c, ('>' | '<'):
-            heads.add((r-1, c, '^'))
-            heads.add((r+1, c, 'v'))
-        case '-', r, c, ('^' | 'v'):
-            heads.add((r, c-1, '<'))
-            heads.add((r, c+1, '>'))
-        case '/', r, c, '>':
-            heads.add((r-1, c, '^'))
-        case '/', r, c, '^':
-            heads.add((r, c+1, '>'))
-        case '/', r, c, 'v':
-            heads.add((r, c-1, '<'))
-        case '/', r, c, '<':
-            heads.add((r+1, c, 'v'))
-        case '\\', r, c, '>':
-            heads.add((r+1, c, 'v'))
-        case '\\', r, c, '^':
-            heads.add((r, c-1, '<'))
-        case '\\', r, c, '>':
-            heads.add((r+1, c, '>'))
-        case '\\', r, c, '<':
-            heads.add((r-1, c, '^'))
-        case '\\', r, c, 'v':
-            heads.add((r, c+1, '>'))
-        case _:
-            raise ValueError(tile, head)
+def energize(start_head, verbose=(len(data) < 20)):
+    visited = set()
+    heads = {start_head}
+    while heads:
+        r, c, direction = head = heads.pop()
+        if verbose:
+            print(head, heads)
+        if head in visited:
+            continue
+        if r < 0 or c < 0 or r >= len(data) or c >= len(data[r]):
+            continue
+        visited.add(head)
+        if verbose:
+            draw_room(data, visited)
+        tile = data[r][c]
+        match tile, r, c, direction:
+            case ('.' | '-'), r, c, '>':
+                heads.add((r, c+1, '>'))
+            case ('.' | '-'), r, c, '<':
+                heads.add((r, c-1, '<'))
+            case ('.' | '|'), r, c, 'v':
+                heads.add((r+1, c, 'v'))
+            case ('.' | '|'), r, c, '^':
+                heads.add((r-1, c, '^'))
+            case '|', r, c, ('>' | '<'):
+                heads.add((r-1, c, '^'))
+                heads.add((r+1, c, 'v'))
+            case '-', r, c, ('^' | 'v'):
+                heads.add((r, c-1, '<'))
+                heads.add((r, c+1, '>'))
+            case '/', r, c, '>':
+                heads.add((r-1, c, '^'))
+            case '/', r, c, '^':
+                heads.add((r, c+1, '>'))
+            case '/', r, c, 'v':
+                heads.add((r, c-1, '<'))
+            case '/', r, c, '<':
+                heads.add((r+1, c, 'v'))
+            case '\\', r, c, '>':
+                heads.add((r+1, c, 'v'))
+            case '\\', r, c, '^':
+                heads.add((r, c-1, '<'))
+            case '\\', r, c, '>':
+                heads.add((r+1, c, '>'))
+            case '\\', r, c, '<':
+                heads.add((r-1, c, '^'))
+            case '\\', r, c, 'v':
+                heads.add((r, c+1, '>'))
+            case _:
+                raise ValueError(tile, head)
+    return get_energized_tiles(data, visited)
 
 
-print('*** part 1:', len(get_energized_tiles(data, visited)))
+print('*** part 1:', len(energize((0, 0, '>'))))
 
+results = []
+def record_try(r, c, direction):
+    tiles = energize((r, c, direction), verbose=False)
+    results.append(len(tiles))
+for r in range(len(data)):
+    record_try(r, 0, '>')
+    record_try(r, len(data[0])-1, '<')
+for c in range(len(data[0])):
+    record_try(0, c, 'v')
+    record_try(len(data)-1, c, '^')
+print(results)
 
-
-
-print('*** part 2:', ...)
+print('*** part 2:', max(results))
