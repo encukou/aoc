@@ -21,19 +21,20 @@ loss_map = {
 print(loss_map)
 goal = goal_r, goal_c = len(data) - 1, len(data[0]) - 1
 
-@dataclasses.dataclass
+@dataclasses.dataclass(slots=True)
 @functools.total_ordering
 class State:
     pos: tuple[int, int]
     direction: str
     loss: int
     came_from: 'State' = dataclasses.field(repr=False)
+    score: None = None
 
     def __post_init__(self):
-        estimate = (goal_r - self.r) + (goal_c - self.c) + 3
+        estimate = (goal_r - self.r) + (goal_c - self.c)
         self.score = self.loss + estimate
 
-    def gen_nexts(self, minus=0):
+    def gen_nexts(self, straight_range):
         if self.direction == '.':
             directions = DIRS.values()
         else:
@@ -42,19 +43,20 @@ class State:
         for dr, dc in directions:
             loss = self.loss
             r, c = self.pos
-            for x in range(1, 3+1):
+            for x in range(1, straight_range.stop):
                 r += dr
                 c += dc
                 try:
                     loss += loss_map[r, c]
                 except KeyError:
                     break
-                yield State(
-                    (r, c),
-                    R_DIR[dr, dc],
-                    loss,
-                    self,
-                )
+                if x >= straight_range.start:
+                    yield State(
+                        (r, c),
+                        R_DIR[dr, dc],
+                        loss,
+                        self,
+                    )
 
     def __lt__(self, other):
         return self.score < other.score
@@ -87,33 +89,35 @@ def draw_path(current):
                 print(char, end='')
         print()
 
-def estimate(r, c):
-    return (goal_r - r) + (goal_c - c) + 3
-to_try = [
-    State((0, 0), '.', 0, None),
-    State((0, 0), '.', 0, None),
-]
-bests = {}
-while to_try:
-    current = heapq.heappop(to_try)
-    if (best := bests.get(current.key)) is not None and best <= current:
-        continue
-    if len(to_try) < 10:
-        print(f'{to_try=}')
-        draw_path(current)
-    elif len(bests) % 77 == 0:
-        print(current, len(to_try), len(bests))
-    bests[current.key] = current
-    if current.pos == goal:
-        break
-    for new in current.gen_nexts():
-        heapq.heappush(to_try, new)
+def solve(straight_range):
+    def estimate(r, c):
+        return (goal_r - r) + (goal_c - c) + straight_range.start * 4
+    to_try = [
+        State((0, 0), '.', 0, None),
+        State((0, 0), '.', 0, None),
+    ]
+    bests = {}
+    while to_try:
+        current = heapq.heappop(to_try)
+        if (best := bests.get(current.key)) is not None and best <= current:
+            continue
+        if len(to_try) < 10:
+            print(f'{to_try=}')
+            draw_path(current)
+        elif len(bests) % 77 == 0:
+            print(current, len(to_try), len(bests))
+        bests[current.key] = current
+        if current.pos == goal:
+            break
+        for new in current.gen_nexts(straight_range):
+            heapq.heappush(to_try, new)
 
-draw_path(current)
+    draw_path(current)
+    return current.loss
 
-print('*** part 1:', current.loss)
+print('*** part 1:', solve(range(1, 3+1)))
 
 
 
 
-print('*** part 2:', ...)
+print('*** part 2:', solve(range(4, 10+1)))
