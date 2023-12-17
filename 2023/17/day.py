@@ -25,43 +25,36 @@ goal = goal_r, goal_c = len(data) - 1, len(data[0]) - 1
 @functools.total_ordering
 class State:
     pos: tuple[int, int]
-    to_go: int
     direction: str
+    loss: int
     came_from: 'State' = dataclasses.field(repr=False)
 
     def __post_init__(self):
-        if self.came_from is None:
-            self.loss = 0
-        else:
-            prev_loss = self.came_from.loss
-            try:
-                self.loss = prev_loss + loss_map[self.pos]
-            except KeyError:
-                raise ValueError(self.pos)
         estimate = (goal_r - self.r) + (goal_c - self.c) + 3
         self.score = self.loss + estimate
 
-    def gen_nexts(self):
+    def gen_nexts(self, minus=0):
         if self.direction == '.':
-            for dr, dc in DIRS.values():
-                yield from self.next(dr, dc, 2)
+            directions = DIRS.values()
         else:
             dr, dc = DIRS[self.direction]
-            if self.to_go:
-                yield from self.next(dr, dc, self.to_go - 1)
-            for dr, dc in (dc, dr), (-dc, -dr):
-                yield from self.next(dr, dc, 2)
-
-    def next(self, dr, dc, to_go):
-        try:
-            yield State(
-                (self.r + dr, self.c + dc),
-                to_go,
-                R_DIR[dr, dc],
-                self,
-            )
-        except ValueError:
-            pass
+            directions = (dc, dr), (-dc, -dr)
+        for dr, dc in directions:
+            loss = self.loss
+            r, c = self.pos
+            for x in range(1, 3+1):
+                r += dr
+                c += dc
+                try:
+                    loss += loss_map[r, c]
+                except KeyError:
+                    break
+                yield State(
+                    (r, c),
+                    R_DIR[dr, dc],
+                    loss,
+                    self,
+                )
 
     def __lt__(self, other):
         return self.score < other.score
@@ -79,7 +72,7 @@ class State:
 
     @property
     def key(self):
-        return self.pos, self.to_go, self.direction
+        return self.pos, self.direction
 
 def draw_path(current):
     path = {}
@@ -97,8 +90,8 @@ def draw_path(current):
 def estimate(r, c):
     return (goal_r - r) + (goal_c - c) + 3
 to_try = [
-    State((0, 0), 3, '.', None),
-    State((0, 0), 3, '.', None),
+    State((0, 0), '.', 0, None),
+    State((0, 0), '.', 0, None),
 ]
 bests = {}
 while to_try:
@@ -108,7 +101,7 @@ while to_try:
     if len(to_try) < 10:
         print(f'{to_try=}')
         draw_path(current)
-    elif len(bests) % 7 == 0:
+    elif len(bests) % 77 == 0:
         print(current, len(to_try), len(bests))
     bests[current.key] = current
     if current.pos == goal:
