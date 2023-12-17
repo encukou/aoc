@@ -1,6 +1,7 @@
 import sys
 import dataclasses
 import functools
+import heapq
 
 data = sys.stdin.read().splitlines()
 print(data)
@@ -10,7 +11,6 @@ DIRS = {
     '<': (0, -1),
     'v': (1, 0),
     '^': (-1, 0),
-    '.': (0, 0),
 }
 R_DIR = {v: k for k, v in DIRS.items()}
 loss_map = {
@@ -41,8 +41,33 @@ class State:
         estimate = (goal_r - self.r) + (goal_c - self.c) + 3
         self.score = self.loss + estimate
 
+    def gen_nexts(self):
+        if self.direction == '.':
+            for dr, dc in DIRS.values():
+                yield from self.next(dr, dc, 2)
+        else:
+            dr, dc = DIRS[self.direction]
+            if self.to_go:
+                yield from self.next(dr, dc, self.to_go - 1)
+            for dr, dc in (dc, dr), (-dc, -dr):
+                yield from self.next(dr, dc, 2)
+
+    def next(self, dr, dc, to_go):
+        try:
+            yield State(
+                (self.r + dr, self.c + dc),
+                to_go,
+                R_DIR[dr, dc],
+                self,
+            )
+        except ValueError:
+            pass
+
     def __lt__(self, other):
         return self.score < other.score
+
+    def __eq__(self, other):
+        return self.score == other.score
 
     @property
     def r(self):
@@ -52,7 +77,11 @@ class State:
     def c(self):
         return self.pos[1]
 
-def draw_path(tried, current):
+    @property
+    def key(self):
+        return self.pos, self.to_go, self.direction
+
+def draw_path(current):
     path = {}
     while current:
         path[current.pos] = current.direction
@@ -68,39 +97,26 @@ def draw_path(tried, current):
 def estimate(r, c):
     return (goal_r - r) + (goal_c - c) + 3
 to_try = [
-    State((0, 0), 3, '>', None),
-    State((0, 0), 3, 'v', None),
+    State((0, 0), 3, '.', None),
+    State((0, 0), 3, '.', None),
 ]
-tried = {}
+bests = {}
 while to_try:
-    to_try.sort(reverse=True)
-    current = to_try.pop()
-    print(current, len(to_try), len(tried))
+    current = heapq.heappop(to_try)
+    if (best := bests.get(current.key)) is not None and best <= current:
+        continue
     if len(to_try) < 10:
         print(f'{to_try=}')
-        draw_path(tried, current)
-    if (best := tried.get((current.pos, current.to_go, current.direction))) is not None and best <= current:
-        continue
-    tried[current.pos, current.to_go, current.direction] = current
+        draw_path(current)
+    elif len(bests) % 7 == 0:
+        print(current, len(to_try), len(bests))
+    bests[current.key] = current
     if current.pos == goal:
         break
-    def explore(dr, dc, new_to_go):
-        nr = current.r + dr
-        nc = current.c + dc
-        new_direction = R_DIR[dr, dc]
-        try:
-            new_state = State((nr, nc), new_to_go, new_direction, current)
-        except ValueError:
-            pass
-        else:
-            to_try.append(new_state)
-    dr, dc = DIRS[current.direction]
-    if current.to_go:
-        explore(dr, dc, current.to_go - 1)
-    for dr, dc in (dc, dr), (-dc, -dr):
-        explore(dr, dc, 2)
+    for new in current.gen_nexts():
+        heapq.heappush(to_try, new)
 
-draw_path(tried, current)
+draw_path(current)
 
 print('*** part 1:', current.loss)
 
