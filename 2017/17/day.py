@@ -31,4 +31,3 @@ for i in range(1, 50000000+1):
         print(f'{i=} {pos=} +{step} {bufsize=}')
 
 print('*** part 2:', after_zero)
-# 1222153 too low
