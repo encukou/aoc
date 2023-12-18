@@ -24,9 +24,9 @@ def draw_and_count(dug):
         is_in = False
         print(f'{r:3}. ', end='')
         for c in range(min(cs), max(cs)+1):
-            char = dug.get((r, c))
+            char, color_escape = dug.get((r, c), (None, None))
             if char:
-                print(char, end='')
+                print(color_escape + char + '\033[0m', end='')
                 if char in {'.', '|'}:
                     is_in = not is_in
                 total += 1
@@ -45,11 +45,13 @@ for line in data:
     direction, distance, color = line.split()
     distance = int(distance)
     assert distance > 0
+    rgb = [str(int(color[pos:pos+2], 16)) for pos in (2, 4, 6)]
+    color_escape = f'\033[48;2;{';'.join(rgb)}m'
     dr, dc = DIRS[direction]
     chars = CHARS[direction]
     def record(char):
         if (r, c) not in dug or char != '#':
-            dug[r, c] = char
+            dug[r, c] = (char, color_escape)
     record(chars[0])
     for i in range(distance - 1):
         r += dr
@@ -62,7 +64,7 @@ for line in data:
         print(dug)
         draw_and_count(dug)
 
-print(dug)
+#print(dug)
 
 print('*** part 1:', draw_and_count(dug))
 
@@ -90,6 +92,8 @@ DIR_CODES = {
     '2': 'L',
     '3': 'U',
 }
+# First, "mark" the start and end of each line.
+# (We assume the bounday doesn't intersect/touch itself.)
 marks = {}
 r = 0
 c = 0
@@ -103,19 +107,22 @@ for line in data:
     dr, dc = DIRS[direction]
     nr = r + dr * distance
     nc = c + dc * distance
-    def put_mark(r, c, mark):
-        mark_row = marks.setdefault(r, {})
-        assert c not in mark_row
-        mark_row[c] = mark
-    if direction == 'U':
-        put_mark(r, c, "'")
-        put_mark(nr, c, ".")
-    elif direction == 'D':
-        put_mark(r, c, ".")
-        put_mark(nr, c, "'")
+    def put_mark(r, c):
+        marks.setdefault(r, set()).add(c)
+    put_mark(r, c)
+    put_mark(nr, nc)
     r = nr
     c = nc
 print(marks)
+
+# Then, go through the map top to bottom, keeping track of the set of current
+# *vertical* boundary lines in `current_marks`.
+# On each line with marks, update this set: each mark is the end of an existing
+# vertical line, or the start of a new one.
+# Then pair these lines up, producing ranges of dug-out columns for the
+# subsequent lines (`current_ranges`).
+# On the line with marks, the dug-out columns are the union of the preceding
+# `current_ranges` and the new ones.
 current_marks = set()
 current_ranges = []
 total = 0
@@ -124,15 +131,9 @@ for r, mark_row in sorted(marks.items()):
     new = sum(len(r) for r in current_ranges) * (r - prev_r - 1)
     total += new
     print(r, new, '->', total)
-    for c, mark in mark_row.items():
-        if mark == '.':
-            assert c not in current_marks
-            current_marks.add(c)
-        else:
-            assert c in current_marks
-            current_marks.remove(c)
+    current_marks ^= mark_row
     assert len(current_marks) % 2 == 0
-    mark_row = sorted(mark_row.items())
+    mark_row = sorted(mark_row)
     current_marks_sorted = sorted(current_marks)
     new_ranges = [range(a, b+1) for a, b in zip(
         current_marks_sorted[0::2],
