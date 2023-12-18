@@ -15,6 +15,7 @@ diagram = {
 dr = 1
 dc = 0
 letters = []
+num_steps = 0
 while True:
     match diagram[r, c]:
         case ('|' | '-'):
@@ -39,10 +40,7 @@ while True:
             break
         case _:
             raise ValueError((data[r][c], dr, dc))
+    num_steps += 1
 
 print('*** part 1:', ''.join(letters))
-
-
-
-
-print('*** part 2:', ...)
+print('*** part 2:', num_steps)
