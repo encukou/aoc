@@ -32,15 +32,15 @@ class Condition:
     def __repr__(self):
         return f'{self.category}{self.op_name}{self.value}'
 
-    def evaluate(self, part):
+    def evaluate(self, part) -> bool:
         return self.op(part.categories[self.category], self.value)
 
     def split_ranges(self, ranges):
         affected_range = ranges[self.category]
-        if self.op == operator.lt:
+        if self.op_name == '<':
             matched_range = range(affected_range.start, self.value)
             nonmatched_range = range(self.value, affected_range.stop)
-        elif self.op == operator.gt:
+        elif self.op_name == '>':
             nonmatched_range = range(affected_range.start, self.value+1)
             matched_range = range(self.value+1, affected_range.stop)
         else:
@@ -65,23 +65,19 @@ class Rule:
             return cls(None, spec, workflows)
         return cls(Condition.parse(cond), destination, workflows)
 
+    @cached_property
+    def destination(self):
+        return self.workflows[self.destination_name]
+
     def __repr__(self):
         if self.condition:
             return f'{self.condition}:{self.destination_name}'
         return f':{self.destination_name}'
 
-    def evaluate(self, part):
+    def evaluate(self, part) -> bool:
         if not self.condition:
             return True
         return self.condition.evaluate(part)
-
-    @cached_property
-    def is_final(self):
-        return self.destination in 'AR'
-
-    @cached_property
-    def destination(self):
-        return self.workflows[self.destination_name]
 
     def split_ranges(self, ranges):
         if self.condition:
@@ -99,27 +95,6 @@ class Workflow:
         name, rest = line.removesuffix('}').split('{')
         rules = [Rule.parse(part, workflows) for part in rest.split(',')]
         return cls(name, rules, workflows)
-
-    def simplify(self):
-        while (
-            len(self.rules) > 1
-            and self.rules[-2].destination == self.rules[-1].destination
-        ):
-            del self.rules[-2]
-        if len(self.rules) == 1:
-            [remaining_rule] = self.rules
-            assert remaining_rule.condition is None
-            for name, wf in self.workflows.items():
-                wf.replace_destination(self.name, remaining_rule.destination)
-
-    def replace_destination(self, src, dst):
-        changed = False
-        for rule in self.rules:
-            if rule.destination == src:
-                rule.destination = dst
-                changed = True
-        if changed:
-            self.simplify()
 
     def classify_part(self, part):
         for rule in self.rules:
@@ -143,12 +118,6 @@ class Workflow:
 @dataclasses.dataclass
 class FinalWorkflow:
     accept: bool
-
-    def simplify(self):
-        return self
-
-    def replace_destination(self, s, d):
-        return self
 
     def is_valid(self):
         return True
@@ -188,13 +157,7 @@ for line in it:
     parts.append(Part.parse(line))
 #pprint(parts)
 
-for wf in workflows.values():
-    wf.simplify()
-print(len(workflows))
 pprint(workflows)
-workflows = {name: wf for name, wf in workflows.items() if wf.is_valid()}
-pprint(workflows)
-print(len(workflows))
 
 total = 0
 in_wf = workflows['in']
