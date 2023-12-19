@@ -140,21 +140,13 @@ def bit_count(grid):
         total += pattern.bits.bit_count() * n
     return total
 
-if len(data) < 10:
-    NUM_ITERATIONS = 2
-else:
-    NUM_ITERATIONS = 5
+def solve(num_iterations):
+    grid = Counter([Pattern.parse('.#./..#/###')])
+    print(grid)
+    for i in range(num_iterations):
+        grid = step(grid, rules)
+        print(f'{i}: {bit_count(grid)} -- {grid}')
+    return bit_count(grid)
 
-grid = Counter([Pattern.parse('.#./..#/###')])
-print(grid)
-for i in range(NUM_ITERATIONS):
-    grid = step(grid, rules)
-    print(f'{i}: {bit_count(grid)} -- {grid}')
-
-
-print('*** part 1:', bit_count(grid))
-# 111 too high
-
-
-
-print('*** part 2:', ...)
+print('*** part 1:', solve(2 if len(data) < 10 else 5))
+print('*** part 2:', solve(2 if len(data) < 10 else 18))
