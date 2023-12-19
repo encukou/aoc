@@ -58,12 +58,35 @@ class Workflow:
         rules = [Rule.parse(part) for part in rest.split(',')]
         return cls(name, rules)
 
-    def classify(self, part, workflows):
+    def simplify(self, workflows):
+        while (
+            len(self.rules) > 1
+            and self.rules[-2].destination == self.rules[-1].destination
+        ):
+            del self.rules[-2]
+        if len(self.rules) == 1:
+            [remaining_rule] = self.rules
+            assert remaining_rule.condition is None
+            for name, wf in workflows.items():
+                wf.replace_destination(
+                    self.name, remaining_rule.destination, workflows,
+                )
+
+    def replace_destination(self, src, dst, workflows):
+        changed = False
+        for rule in self.rules:
+            if rule.destination == src:
+                rule.destination = dst
+                changed = True
+        if changed:
+            self.simplify(workflows)
+
+    def classify_part(self, part, workflows):
         for rule in self.rules:
             if rule.evaluate(part):
                 if rule.is_final:
                     return rule.destination
-                return workflows[rule.destination].classify(part, workflows)
+                return workflows[rule.destination].classify_part(part, workflows)
 
 @dataclasses.dataclass
 class Part:
@@ -86,23 +109,26 @@ for line in it:
         break
     wf = Workflow.parse(line)
     workflows[wf.name] = wf
-pprint(workflows)
 parts = []
 for line in it:
     parts.append(Part.parse(line))
-pprint(parts)
+#pprint(parts)
+
+for wf in workflows.values():
+    wf.simplify(workflows)
+print(len(workflows))
+workflows = {name: wf for name, wf in workflows.items() if len(wf.rules) > 1}
+pprint(workflows)
+print(len(workflows))
 
 total = 0
 in_wf = workflows['in']
 for part in parts:
-    result = in_wf.classify(part, workflows)
+    result = in_wf.classify_part(part, workflows)
     print(part, result)
     if result == 'A':
         total += sum(part.categories.values())
 
 print('*** part 1:', total)
-
-
-
 
 print('*** part 2:', ...)
