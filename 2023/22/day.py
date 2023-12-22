@@ -22,7 +22,7 @@ class Brick:
                 (int(n)+1 for n in ends.split(',')),
             )
         ]
-        return cls(ranges)
+        return cls(ranges, ranges[-1].start == 1)
 
     def __repr__(self):
         return ''.join([
@@ -32,11 +32,15 @@ class Brick:
             '>'
         ])
 
+    def sort_key(self):
+        return self.ranges[-1].start, self.ranges[-1].stop
+
 bricks = []
 for line in data:
     bricks.append(Brick.parse(line))
 pprint(bricks)
 
+bricks.sort(key=Brick.sort_key)
 while not all(b.resting for b in bricks):
     print('falling')
     for bi, brick in enumerate(bricks):
@@ -45,29 +49,28 @@ while not all(b.resting for b in bricks):
         rx, ry, rz = brick.ranges
         zs_below = [1]
         resting = True
+        fall = True
         for obi, obrick in enumerate(bricks):
             if bi == obi:
                 continue
             ox, oy, oz = obrick.ranges
             if rz.start < oz.stop:
                 continue
-            found = False
-            for x in rx:
-                for y in ry:
-                    if x in ox and y in oy:
-                        found = True
-                        break
-                if found:
-                    break
-            if found:
+            if (rx.start < ox.stop
+                and rx.stop > ox.start
+                and ry.start < oy.stop
+                and ry.stop > oy.start
+            ):
                 zs_below.append(oz.stop)
-                resting &= obrick.resting
+                if not obrick.resting:
+                    fall = False
+        if not fall:
+            continue
         fall_z = max(zs_below)
-        if fall_z < rz.start:
-            #print('fall')
-            brick.ranges[-1] = range(fall_z, fall_z + len(rz))
-        else:
-            brick.resting = resting
+        assert fall_z <= rz.start
+        #print('fall')
+        brick.ranges[-1] = range(fall_z, fall_z + len(rz))
+        brick.resting = True
         #print(brick, max(zs_below))
     pprint(bricks)
 
@@ -80,14 +83,12 @@ for bi, brick in enumerate(bricks):
             continue
         ox, oy, oz = obrick.ranges
         found = False
-        for x in rx:
-            for y in ry:
-                if x in ox and y in oy and oz.start == rz.stop:
-                    found = True
-                    break
-            if found:
-                break
-        if found:
+        if (rx.start < ox.stop
+            and rx.stop > ox.start
+            and ry.start < oy.stop
+            and ry.stop > oy.start
+            and oz.start == rz.stop
+        ):
             supported_by.append(obi)
             supports[obi].append(bi)
     print(brick, supported_by)
@@ -99,8 +100,6 @@ for bi, supported_by in supports.items():
 print(do_not_break)
 
 print('*** part 1:', len(bricks) - len(do_not_break))
-
-
 
 
 print('*** part 2:', ...)
