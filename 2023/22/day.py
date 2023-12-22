@@ -1,139 +1,104 @@
 import sys
-from dataclasses import dataclass
 from pprint import pprint
-from collections import defaultdict
-from functools import cached_property
+from collections import deque
+from functools import total_ordering
+import heapq
 
 data = sys.stdin.read().splitlines()
-print(data)
 
+@total_ordering
 class Brick:
-    ranges: list
-    resting: bool
-
     def __init__(self, line):
-        starts, ends = line.split('~')
-        self.ranges = [
-            range(s, e)
-            for s, e
-            in zip(
-                (int(n) for n in starts.split(',')),
-                (int(n)+1 for n in ends.split(',')),
-            )
+        starts, stops = line.split('~')
+        self.x, self.y, self.z = [
+            range(int(start), int(stop) + 1)
+            for start, stop in zip(starts.split(','), stops.split(','))
         ]
-        self.resting = (self.ranges[-1].start == 1)
+        self.supporters = set()
+        self.supportees = set()
 
     def __repr__(self):
         return ''.join([
             '<',
-            ",".join(f'{r.start}-{r.stop}' for r in self.ranges),
-            '*' if self.resting else '',
+            ",".join(f'{r.start}-{r.stop}' for r in (self.x, self.y, self.z)),
             '>'
         ])
 
-    def sort_key(self):
-        return self.ranges[-1].start, self.ranges[-1].stop
-
-    @cached_property
-    def supporters(self):
-        return set()
-
-    @cached_property
-    def supportees(self):
-        return set()
+    def __lt__(self, other):
+        return self.z.start < other.z.start
 
 bricks = []
 for line in data:
     bricks.append(Brick(line))
-pprint(bricks)
 
-bricks.sort(key=Brick.sort_key)
-while not all(b.resting for b in bricks):
-    print('falling')
-    for brick in bricks:
-        if brick.resting:
-            continue
-        rx, ry, rz = brick.ranges
-        zs_below = [1]
-        resting = True
-        fall = True
-        supported_by = set()
-        for obrick in bricks:
-            if brick == obrick:
-                continue
-            ox, oy, oz = obrick.ranges
-            if rz.start < oz.stop:
-                continue
-            if (rx.start < ox.stop
-                and rx.stop > ox.start
-                and ry.start < oy.stop
-                and ry.stop > oy.start
-            ):
-                zs_below.append(oz.stop)
-                if not obrick.resting:
-                    fall = False
-        if not fall:
-            continue
-        fall_z = max(zs_below)
-        assert fall_z <= rz.start
-        print('fall')
-        brick.ranges[-1] = range(fall_z, fall_z + len(rz))
-        brick.resting = True
-        print(brick, max(zs_below))
-    pprint(bricks)
-
+# For each brick, find where it falls to (the "floor") and the brick(s)
+# that support it (its "supporters").
+# Note that while a rick is falling, all its future supporters already
+# need to be below it. So we go from bottom to top.
+bricks.sort()
 for brick in bricks:
-    rx, ry, rz = brick.ranges
-    for obrick in bricks:
-        if brick == obrick:
-            continue
-        ox, oy, oz = obrick.ranges
-        found = False
-        if (rx.start < ox.stop
-            and rx.stop > ox.start
-            and ry.start < oy.stop
-            and ry.stop > oy.start
-            and oz.start == rz.stop
+    floor_z = 1
+    supporters = set()
+    for candidate in bricks:
+        if candidate == brick:
+            # Reached the current bricks;
+            # all other candidates will be above it.
+            break
+        if (brick.z.start >= candidate.z.stop
+            and candidate.z.stop >= floor_z
+            and brick.x.start < candidate.x.stop
+            and brick.x.stop > candidate.x.start
+            and brick.y.start < candidate.y.stop
+            and brick.y.stop > candidate.y.start
         ):
-            obrick.supporters.add(brick)
-            brick.supportees.add(obrick)
+            if candidate.z.stop == floor_z:
+                supporters.add(candidate)
+            else:
+                floor_z = candidate.z.stop
+                supporters = {candidate}
+    assert floor_z <= brick.z.start
+    brick.z = range(floor_z, floor_z + len(brick.z))
+    brick.supporters = supporters
+    print(f'{brick} falls to {floor_z}, supported by {brick.supporters}')
+    for supporter in brick.supporters:
+        supporter.supportees.add(brick)
+
 do_not_break = set()
 for brick in bricks:
-    if len(brick.supporters) == 1:
-        [lone_supporter] = brick.supporters
-        do_not_break.add(lone_supporter)
-print(do_not_break)
+    try:
+        [single_supporter] = brick.supporters
+    except ValueError:
+        continue
+    else:
+        do_not_break.add(single_supporter)
 
 print('*** part 1:', len(bricks) - len(do_not_break))
 
-bricks.sort(key=Brick.sort_key)
 for brick in bricks:
-    removed = {brick}
+    fallen = {brick}
     to_check = list(brick.supportees)
     seen = set()
     print()
-    print(f'Check for {brick}')
+    print(f'Check chain reaction for {brick}')
     while to_check:
-        to_check.sort(key=Brick.sort_key)
-        current = to_check.pop(0)
+        heapq.heapify(to_check)
+        current = heapq.heappop(to_check)
         if current in seen:
-            print(f'{current} checked!')
             continue
         seen.add(current)
-        remaining_supporters = current.supporters - removed
+        remaining_supporters = current.supporters - fallen
         if remaining_supporters:
-            print(f'{current} would still be supported by {remaining_supporters}')
+            print(
+                f'{current} would still be supported by {remaining_supporters}'
+            )
         else:
             print(
                 f'{current} would fall! '
                 + f'It supports {len(current.supportees)} more.',
             )
-            removed.add(current)
+            fallen.add(current)
             to_check.extend(current.supportees)
-    brick.score = len(removed) - 1
+    brick.score = len(fallen) - 1
     print(f'{brick.score=}')
 
 print('*** part 2:', sum(b.score for b in bricks))
-# Wrong: 1470
-# 31348 too low!
-# 67468
