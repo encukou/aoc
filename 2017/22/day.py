@@ -3,12 +3,6 @@ import sys
 data = sys.stdin.read().splitlines()
 print(data)
 
-infected = set()
-for r, line in enumerate(data, start=-(len(data)//2)):
-    for c, char in enumerate(line, start=-(len(data[0])//2)):
-        if char == '#':
-            infected.add((r, c))
-
 DIR_CHARS = {
     (-1, 0): '↑',
     (0, -1): '←',
@@ -16,9 +10,18 @@ DIR_CHARS = {
     (1, 0): '↓',
 }
 
+def load_data():
+    for r, line in enumerate(data, start=-(len(data)//2)):
+        for c, char in enumerate(line, start=-(len(data[0])//2)):
+            if char == '#':
+                yield (r, c)
+
+infected = set(load_data())
+
 def draw(infected, vr, vc, direction):
     rs = {r for r, c in infected} | {vr}
     cs = {c for r, c in infected} | {vc}
+    is_dict = isinstance(infected, dict)
     for r in range(min(rs)-1, max(rs)+2):
         print(f'{r:5}', end=' ')
         for c in range(min(cs)-1, max(cs)+2):
@@ -29,7 +32,10 @@ def draw(infected, vr, vc, direction):
             else:
                 print(' ', end='')
             if (r, c) in infected:
-                print('#', end='')
+                if is_dict:
+                    print(infected[r, c], end='')
+                else:
+                    print('#', end='')
             else:
                 print('.', end='')
         print()
@@ -54,7 +60,34 @@ for i in range(10000):
 
 print('*** part 1:', total)
 
+infected = dict.fromkeys(load_data(), '#')
 
 
+vr = vc = 0
+dr, dc = -1, 0
+total = 0
+for i in range(10000000):
+    if i <= 100 or i % 1000 == 0:
+        print(i, f'({total})')
+        if i < 50000:
+            draw(infected, vr, vc, (dr, dc))
+    match infected.get((vr, vc)):
+        case '#':
+            dr, dc = dc, -dr
+            infected[vr, vc] = 'F'
+        case None:
+            dr, dc = -dc, dr
+            infected[vr, vc] = 'W'
+        case 'W':
+            infected[vr, vc] = '#'
+            total += 1
+        case 'F':
+            dr, dc = -dr, -dc
+            del infected[vr, vc]
+        case _:
+            raise ValueError()
+    vr += dr
+    vc += dc
 
-print('*** part 2:', ...)
+
+print('*** part 2:', total)
