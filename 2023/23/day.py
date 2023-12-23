@@ -1,7 +1,7 @@
 import sys
 from dataclasses import dataclass, field
 from collections import deque, defaultdict
-from functools import partial
+from functools import lru_cache
 
 data = sys.stdin.read().splitlines()
 print(data)
@@ -158,27 +158,23 @@ while to_check:
     interesting_tiles.add(tile)
     to_check.extend(t for d, t in tile.connections)
 
-
 @dataclass(slots=True)
 class State2:
     tile: Tile
     history: frozenset = field(repr=False)
     distance: int = 0
-    prev: 'State2' = field(repr=False, default=None)
 
     def gen_nexts(self):
         for distance, next_tile in sorted(
             self.tile.connections,
             key=lambda d_t: -d_t[0],
         ):
-            key = next_tile.pos
-            if key in self.history:
+            if next_tile in self.history:
                 continue
             yield type(self)(
                 next_tile,
-                self.history | frozenset({key}),
+                self.history | frozenset({next_tile}),
                 self.distance + distance,
-                self,
             )
 
     def __lt__(self, other):
@@ -186,47 +182,28 @@ class State2:
 
 def part2(maze):
     winner = State2(start_tile, frozenset())
-    longest_distance = 0
-    bests = {}
     to_try = deque([winner])
     while to_try:
         current = to_try.pop()
-        key = current.history, current.tile.pos
-        if key in bests:
-            if bests[key].distance > current.distance:
-                print('reject')
-                continue
         possible_distance = current.distance + sum(
             t.best_distance
             for t in interesting_tiles - current.history
         )
-        if possible_distance < longest_distance:
-            print('reject!')
+        if possible_distance < winner.distance:
             continue
-        bests[key] = current
-        nexts = sorted(current.gen_nexts())
-        print(
-            f'{current.tile.pos!s:10}',
-            current.distance,
-            f'{len(current.history)}/{len(interesting_tiles)}',
-            longest_distance,
-            winner.distance,
-            possible_distance,
-            '-' * len(current.history),
-            flush=True,
-        )
-        to_try.extend(nexts)
+        to_try.extend(sorted(current.gen_nexts()))
         if current.tile.is_edge:
             if current.distance > winner.distance:
                 winner = current
-        if current.distance > longest_distance:
-            longest_distance = current.distance
-    print('--- Best run (reversed) ---')
-    to_print = winner
-    while to_print:
-        print(to_print)
-        to_print = to_print.prev
+            if current.distance // 2 > winner.distance // 3:
+                print(
+                    f'{current.tile.pos!s:10}',
+                    current.distance,
+                    f'{len(current.history)}/{len(interesting_tiles)}',
+                    winner.distance,
+                    possible_distance,
+                    len(to_try),
+                )
     return winner.distance
 
 print('*** part 2:', part2(maze))
-# 6747 too high
