@@ -20,6 +20,9 @@ for a, b in zip(*lines):
 print('*** part 1:', total)
 
 
+total = 0
+for n in lines[0]:
+    total += n * lines[1].count(n)
 
 
-print('*** part 2:', ...)
+print('*** part 2:', total)
