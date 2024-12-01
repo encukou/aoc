@@ -3,26 +3,26 @@ import sys
 data = sys.stdin.read().splitlines()
 print(data)
 
-lines = [], []
+lists = [], []
 for line in data:
     a, b = line.split()
-    lines[0].append(int(a))
-    lines[1].append(int(b))
+    lists[0].append(int(a))
+    lists[1].append(int(b))
 
-lines[0].sort()
-lines[1].sort()
+lists[0].sort()
+lists[1].sort()
 total = 0
-for a, b in zip(*lines):
-    print(a - b)
+for a, b in zip(*lists):
+    print(a, b, a - b)
     total += abs(a - b)
-
 
 print('*** part 1:', total)
 
 
 total = 0
-for n in lines[0]:
-    total += n * lines[1].count(n)
-
+for n in lists[0]:
+    new = n * lists[1].count(n)
+    print(n, new)
+    total += new
 
 print('*** part 2:', total)
