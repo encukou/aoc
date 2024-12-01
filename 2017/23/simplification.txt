@@ -1,0 +1,137 @@
+ORIGINAL            WRITTEN OUT     EXPR                    SIMPL
+------------------- --------------- ----------------------- -------------
+    a = 1           a = 1          ~a = 1
+ 0. b = 99          b = 99         ~b = 99
+ 1. c = b           c = b          ~c = 99
+ 2. if a goto 4     if a goto 4    ~goto 4
+ 3. if 1 goto 8     goto 8         ~goto 8
+ 4: b *= 100       :b = b * 100     b = 99 * 100 + 100000   b = 109900
+ 5. b -= -100000    b = b + 100000    = 109900
+ 6. c = b           c = b           c = 109900
+ 7. c -= -17000     c = c + 17000   c = 126900              c = 126900
+ 8: f = 1          :f = 1          :f = 1                  :f = 1
+ 9. d = 2           d = 2           d = 2                   d = 2
+10: e = 2          :e = 2          :e = 2                  :e = 2
+11: g = d          :g = d          :g = d                  :g = d * e - b
+12. g *= e          g = g * e            * e 
+13. g -= b          g = g - b            - b
+14. if g goto 16    if g goto 16    if g goto 16            if g goto 16
+15. f = 0           f = 0           f = 0                   f = 0
+16: e -= -1        :e = e + 1      :e = e + 1              :e++
+17. g = e           g = e           g = e                   g = e - b
+18. g -= b          g = g - b            - b
+19. if g goto 11    if g goto 11    if g goto 11            if g goto 11
+20. d -= -1         d = d + 1       d = d + 1               d++
+21. g = d           g = d           g = d                   g = d - b
+22. g -= b          g = g - b            - b
+23. if g goto 10    if g goto 10    if g goto 10            if g goto 10
+24. if f goto 26    if f goto 26    if f goto 26            if f goto 26
+25. h -= -1         h = h + 1       h = h + 1               h++
+26: g = b          :g = b          :g = b                   g = b - c
+27. g -= c          g = g - c            - c
+28. if g goto 30    if g goto 30    if g goto 30            if g goto 30
+29. if 1 goto 32    hcf             hcf                     hcf
+30: b -= -17       :b = b + 17     :b = b + 17             :b += 17
+31. if 1 goto 8     goto 8          goto 8                  goto 8
+
+ORIG  SIMPL         CONTROL FLOW            G SET IMM.BEF.USE
+----  ------------- ----------------------- ------------------------
+ 4:   b = 109900            b = 109900              b = 109900
+ 7.   c = 126900            c = 126900              c = 126900
+ 8:  :f = 1         .-----> f = 1           .-----> f = 1
+ 9.   d = 2         |       d = 2           |       d = 2
+10:  :e = 2         | .---> e = 2           | .---> e = 2
+11:  :g = d * e - b | | .-> g = d*e - b     | | .->
+14.   if g goto 16  | | | .-if g goto 16    | | | .-if d*e-b goto 16
+15.   f = 0         | | | | f = 0           | | | | f = 0
+16:  :e++           | | | '>e++             | | | '>e++
+17.   g = e - b     | | |   g = e - b       | | |    
+19.   if g goto 11  | | +---if g goto 11    | | +---if e - b goto 11
+20.   d++           | |     d++             | |     d++
+21.   g = d - b     | |     g = d - b       | |     
+23.   if g goto 10  | +-----if g goto 10    | +-----if d - b goto 10
+24.   if f goto 26  |   .-- if f goto 26    |   .-- if f goto 26
+25.   h++           |   |   h++             |   |   h++
+26:   g = b - c     |   '-> g = b - c       |   '-> 
+28.   if g goto 30  |   .-- if g goto 30    |   .-- if b - c goto 30
+29.   hcf           |   |   hcf             |   |   hcf
+30:  :b += 17       |   '-> b += 17         |   '-> b += 17
+31.   goto 8        '------ goto 8          '------ goto 8
+
+ORIG G SET IMM.BEF.USE        LOOPS               (IN)EQ
+---- ------------------------ ------------------- ------------------
+ 4:          b = 109900       b = 109900          b = 109900
+ 7.          c = 126900       c = 126900          c = 126900
+                              while True:         while True:
+ 8:  .-----> f = 1            | f = 1               f = 1
+ 9.  |       d = 2            | d = 2               d = 2
+     |                        | while d - b:        while d != b:
+10:  | .---> e = 2            | | e = 2               e = 2
+11:  | | .->                  | | while e - b:        while e != b:
+14.  | | | .-if d*e-b goto 16 | | | if not d*e-b:       if d*e == b:
+15.  | | | | f = 0            | | | | f = 0               f = 0
+16:  | | | '>e++              | | | e++                 e++
+19.  | | +---if e - b goto 11 | |                    
+20.  | |     d++              | | d++                 d++
+23.  | +-----if d - b goto 10 |                    
+24.  |   .-- if f goto 26     | if not f:           if not f:
+25.  |   |   h++              |   h++                 h++
+26:  |   '->                  |                    
+28.  |   .-- if b - c goto 30 | if not b - c:       if b == c:
+29.  |   |   hcf              |   hcf                 hcf
+30:  |   '-> b += 17          | b += 17             b += 17
+31.  '------ goto 8
+
+(IN)EQ              FOR                         PURPOSE
+------------------- --------------------------- -------------------------
+b = 109900          b = 109900                  b = 109900
+c = 126900          c = 126900                  c = 126900
+while True:         for b in range(b, c+1, 17): for b in range(b, c+1, 17):
+  f = 1               f = 1                       f = 1
+  d = 2
+  while d != b:       for d in range(2, b+1):
+    e = 2
+    while e != b:       for e in range(2, b+1):
+      if d*e == b:        if d*e == b:            if not is_prime(b):
+        f = 0               f = 0                   f = 0
+      e++
+    d++
+  if not f:           if not f:                   if not f:
+    h++                 h++                         h++
+  if b == c:
+    hcf
+  b += 17
+
+PURPOSE                     SIMPL 2
+--------------------------- -------------------------
+b = 109900                  b = 109900
+c = 126900                  c = 126900
+for b in range(b, c+1, 17): for b in range(b, c+1, 17):
+  f = 1
+  if not is_prime(b):
+    f = 0
+  if not f:                 if not is_prime(b):
+    h++                       h++
+
+RESULT
+------
+
+search_range = range(109900, 126900+1, 17)
+
+candidates = list(range(2, search_range.stop))
+primes = []
+while candidates:
+    prime = candidates[0]
+    print(prime, len(candidates))
+    primes.append(prime)
+    candidates = [c for c in candidates if c % prime]
+print(primes)
+
+def find_h(search_range):
+    h = 0
+    for cur in search_range:
+        if cur not in primes:
+            h += 1
+    return h
+
+print(find_h(search_range))

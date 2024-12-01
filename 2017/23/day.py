@@ -40,6 +40,24 @@ while True:
 print('*** part 1:', num_mul)
 
 
+search_range = range(109900, 126900+1, 17)
 
+candidates = list(range(2, search_range.stop))
+primes = []
+while candidates:
+    prime = candidates[0]
+    print(prime, len(candidates))
+    primes.append(prime)
+    candidates = [c for c in candidates if c % prime]
+print(primes)
 
-print('*** part 2:', ...)
+def find_h(search_range):
+    h = 0
+    for cur in search_range:
+        if cur not in primes:
+            h += 1
+    return h
+
+h = find_h(search_range)
+
+print('*** part 2:', h)
