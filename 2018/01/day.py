@@ -10,4 +10,16 @@ for line in data:
 print('*** part 1:', total)
 
 
-print('*** part 2:', ...)
+def calibrate(lines):
+    all_reached = set()
+    total = 0
+    while True:
+        for line in lines:
+            total += int(line)
+            if total in all_reached:
+                return total
+            all_reached.add(total)
+        print(total, len(all_reached))
+
+
+print('*** part 2:', calibrate(data))
