@@ -15,7 +15,15 @@ for box in data:
 
 print('*** part 1:', twos * threes)
 
+def find_common_letters(boxes):
+    looking_for = set()
+    for box in data:
+        print(box)
+        for i in range(len(box) - 1):
+            key = box[:i] + box[i + 1:], i
+            if key in looking_for:
+                return key[0]
+            looking_for.add(key)
 
 
-
-print('*** part 2:', ...)
+print('*** part 2:', find_common_letters(data))
