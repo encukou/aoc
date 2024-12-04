@@ -32,7 +32,20 @@ for seq in all_sequences:
 
 print('*** part 1:', total)
 
+letters = collections.defaultdict(str)
+for r, row in enumerate(data):
+    for c, char in enumerate(row):
+        letters[r, c] = char
+
+total = 0
+for r, row in enumerate(data):
+    for c, char in enumerate(row):
+        if (
+            char == 'A'
+            and sorted([letters[r+1, c+1], letters[r-1, c-1]]) == ['M', 'S']
+            and sorted([letters[r+1, c-1], letters[r-1, c+1]]) == ['M', 'S']
+        ):
+            total += 1
 
 
-
-print('*** part 2:', ...)
+print('*** part 2:', total)
