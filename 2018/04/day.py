@@ -5,6 +5,7 @@ import sys
 data = sys.stdin.read().splitlines()
 
 guard_totals = collections.Counter()
+minute_totals = collections.Counter()
 guard_minutes = collections.defaultdict(collections.Counter)
 for line in sorted(data):
     minute = int(line[15:17])
@@ -16,6 +17,7 @@ for line in sorted(data):
         for i in range(last_sleep, minute):
             guard_minutes[guard_id][i] += 1
             guard_totals[guard_id] += 1
+            minute_totals[guard_id, i] += 1
         del last_sleep
     else:
         match = re.fullmatch(r'Guard #(\d+) begins shift', line[19:])
@@ -39,7 +41,10 @@ print(guard_id, minute, num_minutes)
 
 print('*** part 1:', guard_id * minute)
 
+(guard_id, minute), num_minutes = max(
+    minute_totals.items(),
+    key=lambda entry: entry[-1],
+)
+print(guard_id, minute, num_minutes)
 
-
-
-print('*** part 2:', ...)
+print('*** part 2:', guard_id * minute)
