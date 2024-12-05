@@ -4,13 +4,16 @@ import sys
 data = sys.stdin.read().splitlines()
 print(data)
 
+earlier = collections.defaultdict(set)
+later = collections.defaultdict(set)
+
 lines = iter(data)
-rules = []
 for line in lines:
     if not line:
         break
-    rules.append(tuple(int(n) for n in line.split('|')))
-print(rules)
+    a, b = (int(n) for n in line.split('|'))
+    earlier[b].add(a)
+    later[a].add(b)
 
 updates = []
 for line in lines:
@@ -22,20 +25,13 @@ incorrect_updates = []
 for update in updates:
     print(update)
     ok = True
-    for rule in rules:
-        a, b = rule
-        try:
-            a_index = update.index(a)
-            b_index = update.index(b)
-        except ValueError:
-            print(rule, 'n/a')
+    for i, n in enumerate(update):
+        if set(update[:i]) <= earlier[n] and set(update[i+1:]) <= later[n]:
+            print(i, n, 'ok')
         else:
-            if a_index >= b_index:
-                print(rule, '!')
-                ok = False
-                break
-            else:
-                print(rule, 'ok')
+            print(i, n, '!')
+            ok = False
+            break
     if ok:
         new = update[len(update) // 2]
         total += new
@@ -45,12 +41,6 @@ for update in updates:
 
 
 print('*** part 1:', total)
-
-earlier = collections.defaultdict(set)
-later = collections.defaultdict(set)
-for a, b in rules:
-    earlier[b].add(a)
-    later[a].add(b)
 
 total = 0
 for update in incorrect_updates:
