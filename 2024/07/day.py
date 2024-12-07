@@ -7,13 +7,13 @@ print(data)
 def get_results(wanted, so_far, numbers, past, ops):
     if not numbers:
         if so_far == wanted:
-            print(past)
+            print(wanted, past)
             yield True
     else:
         for symbol, op in ops:
             result = op(so_far, numbers[0])
             yield from get_results(
-                wanted, result, numbers[1:], [*past, symbol, so_far], ops
+                wanted, result, numbers[1:], [*past, symbol, numbers[0]], ops
             )
 
 
