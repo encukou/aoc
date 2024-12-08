@@ -1,4 +1,5 @@
 import sys
+import itertools
 import dataclasses
 import re
 
@@ -18,14 +19,14 @@ for line in data:
     print(match)
     points.append(Point(int(match[2]), int(match[1]), int(match[4]), int(match[3])))
 print(points)
-def draw_map(points):
+def draw_map(points, second):
     min_r = min(p.r for p in points)
     max_r = max(p.r for p in points)
     min_c = min(p.c for p in points)
     max_c = max(p.c for p in points)
     height = max_r - min_r
     width = max_c - min_c
-    print(f'{height}×{max_c-min_c}')
+    print(f'After {second} seconds: {height}×{max_c-min_c}')
     if height > 50:
         return height
     positions = {(p.r, p.c) for p in points}
@@ -37,13 +38,13 @@ def draw_map(points):
                 print(end='.')
         print()
     return height
-draw_map(points)
+draw_map(points, 0)
 prev_height = None
-while True:
+for second in itertools.count(1):
     for point in points:
         point.r += point.dr
         point.c += point.dc
-    height = draw_map(points)
+    height = draw_map(points, second)
     if prev_height and height > prev_height:
         break
     prev_height = height
@@ -53,4 +54,4 @@ print('*** part 1:', ...)
 
 
 
-print('*** part 2:', ...)
+print('*** part 2:', second-1)
