@@ -19,8 +19,10 @@ for char, positions in antennas.items():
     for a, b in itertools.combinations(positions, 2):
         ar, ac = a
         br, bc = b
-        anti1 = ar + (br - ar) * 2, ac + (bc - ac) * 2
-        anti2 = br + (ar - br) * 2, bc + (ac - bc) * 2
+        distance_r = br - ar
+        distance_c = bc - ac
+        anti1 = ar + distance_r * 2, ac + distance_c * 2
+        anti2 = br - distance_r * 2, bc - distance_c * 2
         antinodes.add(anti1)
         antinodes.add(anti2)
         print(a, b, anti1, anti2)
@@ -35,13 +37,15 @@ for char, positions in antennas.items():
     for a, b in itertools.combinations(positions, 2):
         ar, ac = a
         br, bc = b
-        for distance in itertools.count():
-            anti = ar + (br - ar) * distance, ac + (bc - ac) * distance
+        distance_r = br - ar
+        distance_c = bc - ac
+        for i in itertools.count():
+            anti = ar + distance_r * i, ac + distance_c * i
             if anti not in area_map:
                 break
             antinodes.add(anti)
-        for distance in itertools.count():
-            anti = br + (ar - br) * distance, bc + (ac - bc) * distance
+        for i in itertools.count():
+            anti = br - distance_r * i, bc - distance_c * i
             if anti not in area_map:
                 break
             antinodes.add(anti)
