@@ -30,6 +30,21 @@ print(antinodes)
 print('*** part 1:', len(antinodes & area_map.keys()))
 
 
+antinodes = set()
+for char, positions in antennas.items():
+    for a, b in itertools.combinations(positions, 2):
+        ar, ac = a
+        br, bc = b
+        for distance in itertools.count():
+            anti = ar + (br - ar) * distance, ac + (bc - ac) * distance
+            if anti not in area_map:
+                break
+            antinodes.add(anti)
+        for distance in itertools.count():
+            anti = br + (ar - br) * distance, bc + (ac - bc) * distance
+            if anti not in area_map:
+                break
+            antinodes.add(anti)
+print(antinodes)
 
-
-print('*** part 2:', ...)
+print('*** part 2:', len(antinodes))
