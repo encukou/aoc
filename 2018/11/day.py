@@ -1,4 +1,6 @@
 import sys
+import numpy
+import scipy
 
 data = sys.stdin.read()
 print(data)
@@ -17,32 +19,36 @@ assert get_power(122, 79, 57) == -5, get_power(122, 79, 57)
 assert get_power(217,196, 39) == 0
 assert get_power(101,153, 71) == 4
 
+grid = numpy.array([
+    [get_power(x, y, serial) for y in range(1, 300+1)]
+    for x in range(1, 300+1)
+])
+print(grid, grid.shape)
 
-grid = {}
-for x in range(1, 300+1):
-    for y in range(1, 300+1):
-        power = get_power(x, y, serial)
-        print(end=f'{power:+} ')
-        grid[x, y] = power
-    print()
+def get_max(grid, size):
+    conv = scipy.signal.convolve2d(grid, numpy.ones((size, size)), 'valid')
+    idx = numpy.unravel_index(conv.argmax(), conv.shape)
+    x, y = idx
+    print(idx, conv[idx], flush=True)
+    return x+1, y+1, conv[idx]
 
-maximum = -1000
-for x in range(1, 300+1-3):
-    for y in range(1, 300+1-3):
-        square_total = 0
-        for xx in range(3):
-            for yy in range(3):
-                square_total += grid[x+xx, y+yy]
-        if square_total > maximum:
-            maximum = square_total
-            best_coords = x, y
-
-x, y = best_coords
-print(f'{x},{y} : {maximum}')
-
+x, y, maximum = get_max(grid, 3)
 print('*** part 1:', f'{x},{y}')
 
+max_for_size = {0: 0, 1: 10, 2: 100}
+maximum = -10 * 300 * 300
+for size in range(1, 300+1):
+    if max_for_size[size//2] < 0 and max_for_size[size//2+1] < 0:
+        print('skip', size)
+        max_for_size[size] = -1
+        continue
+    x, y, new_max = get_max(grid, size)
+    if new_max > maximum:
+        maximum = new_max
+        best_params = x, y, size
+    max_for_size[size] = new_max
+    print(size, best_params, maximum, flush=True)
 
 
-
-print('*** part 2:', ...)
+x, y, size = best_params
+print('*** part 2:', f'{x},{y},{size}')
