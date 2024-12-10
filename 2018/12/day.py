@@ -25,18 +25,40 @@ def print_state(state):
     print(''.join('.#'[n] for n in state))
 print_state(state)
 
+def score_state(state, start):
+    return sum(i for i, n in enumerate(state, start=start) if n)
+
+def evolve(state, start):
+    state = numpy.choose(numpy.convolve(state, window), choices)
+    start -= 2
+    prev_len = len(state)
+    state = numpy.trim_zeros(state, 'f')
+    start += prev_len - len(state)
+    state = numpy.trim_zeros(state, 'b')
+    print(i+1, score_state(state, start))
+    print_state(state)
+    return state, start
+
 start = 0
 for i in range(20):
-    state = numpy.choose(numpy.convolve(state, window), choices)
-    print(i)
-    print_state(state)
-    start -= 2
+    state, start = evolve(state, start)
 
-total = sum(i for i, n in enumerate(state, start=start) if n)
+total = score_state(state, start)
 
-print('*** part 1:', total)
+print('*** part 1:', score_state(state, start))
 
+for i in range(20, 200):
+    prev_start = start
+    state, start = evolve(state, start)
 
+delta = prev_start - start
+for i in range(200, 500):
+    prev_start = start
+    prev_state = state
+    state, start = evolve(state, start)
+    assert delta == prev_start - start
+    prev_state == state
 
+start += 50000000000 - 500
 
-print('*** part 2:', ...)
+print('*** part 2:', score_state(state, start))
