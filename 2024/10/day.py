@@ -19,18 +19,16 @@ def gen_destinations(r, c, topo):
         if topo[new_r, new_c] == here + 1:
             yield from gen_destinations(new_r, new_c, topo)
 
-total = 0
+total_score = 0
+total_rating = 0
 for r, line in enumerate(data):
     for c, char in enumerate(line):
         if topo[r, c] == 0:
-            destinations = set(gen_destinations(r, c, topo))
-            new = len(destinations)
-            total += new
-            print(r, c, new, total)
+            destinations = list(gen_destinations(r, c, topo))
+            total_score += len(set(destinations))
+            total_rating += len(destinations)
+            print(r, c, total_score, total_rating)
 
-print('*** part 1:', total)
+print('*** part 1:', total_score)
 
-# not 1017
-
-
-print('*** part 2:', ...)
+print('*** part 2:', total_rating)
