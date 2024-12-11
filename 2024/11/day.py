@@ -1,26 +1,33 @@
+import collections
+import time
 import sys
 
 data = sys.stdin.read().split()
 print(data)
 
-stones = [int(n) for n in data]
-for i in range(25):
-    new_stones = []
-    for stone in stones:
-        s = str(stone)
-        if stone == 0:
-            new_stones.append(1)
-        elif len(s) % 2 == 0:
-            new_stones.append(int(s[len(s) // 2:]))
-            new_stones.append(int(s[:len(s) // 2]))
+stones = {int(n): 1 for n in data}
+def solve(stones, n_turns):
+    this_time = time.time()
+    for i in range(n_turns):
+        new_stones = collections.defaultdict(int)
+        for stone, amount in stones.items():
+            s = str(stone)
+            if stone == 0:
+                new_stones[1] += amount
+            elif len(s) % 2 == 0:
+                new_stones[int(s[len(s) // 2:])] += amount
+                new_stones[int(s[:len(s) // 2])] += amount
+            else:
+                new_stones[stone * 2024] += amount
+        stones = new_stones
+
+        last_time = this_time
+        this_time = time.time()
+        if len(stones) < 10:
+            print(i, sum(stones.values()), stones)
         else:
-            new_stones.append(stone * 2024)
-    stones = new_stones
-    print(len(stones), stones)
+            print(i, sum(stones.values()), round(this_time - last_time, 1), flush=True)
+    return sum(stones.values())
 
-print('*** part 1:', len(stones))
-
-
-
-
-print('*** part 2:', ...)
+print('*** part 1:', solve(stones, 25))
+print('*** part 2:', solve(stones, 75))
