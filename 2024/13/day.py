@@ -40,13 +40,18 @@ print(machines)
 
 def eval_machine(machine):
     button_a, button_b = machine.buttons
-    for a_presses in range(100):
-        for b_presses in range(100):
-            if (
-                button_a.x * a_presses + button_b.x * b_presses == machine.prize_x
-                and button_a.y * a_presses + button_b.y * b_presses == machine.prize_y
-            ):
-                return a_presses * button_a.cost + b_presses * button_b.cost
+    for b_presses in reversed(range(min(
+        int(machine.prize_x / button_b.x+1),
+        int(machine.prize_y / button_b.y+1),
+    ))):
+        x = button_b.x * b_presses
+        x_left = machine.prize_x - x
+        a_presses, mod = divmod(x_left, button_a.x)
+        if mod:
+            continue
+        y = button_b.y * b_presses + button_a.y * a_presses
+        if y == machine.prize_y:
+            return a_presses * button_a.cost + b_presses * button_b.cost
     return 0
 
 total = 0
