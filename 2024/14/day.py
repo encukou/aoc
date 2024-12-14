@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import re
 import sys
 import math
+import itertools
 
 data = sys.stdin.read().splitlines()
 print(data)
@@ -24,7 +25,7 @@ class Robot:
     dr: int
     dc: int
 
-    def move(self, n_steps):
+    def move(self, n_steps=1):
         self.r += self.dr * n_steps
         self.r %= size_r
         self.c += self.dc * n_steps
@@ -45,7 +46,7 @@ class Robot:
             return 0, 0
         return qr, qc
 
-def draw_map(robots):
+def draw_map(robots, color_quadrants=True):
     positions = Counter((r.r, r.c) for r in robots)
     for r in range(size_r):
         for c in range(size_c):
@@ -55,13 +56,20 @@ def draw_map(robots):
             else:
                 symbol = n
             qr, qc = Robot(r, c, 0, 0).get_quadrant()
-            print(f'\x1b[4{1+qr*qc}m{symbol}{RESET}', end='')
+            if color_quadrants:
+                print(f'\x1b[4{1+qr*qc}m{symbol}{RESET}', end='')
+            else:
+                print(f'\x1b[4{n}m{symbol}{RESET}', end='')
         print()
 
-robots = []
-for line in data:
-    match = re.match(r'p=([-\d]+),([-\d]+) v=([-\d]+),([-\d]+)', line)
-    robots.append(Robot(*(int(match[n]) for n in (2, 1, 4, 3))))
+def get_robots(data):
+    robots = []
+    for line in data:
+        match = re.match(r'p=([-\d]+),([-\d]+) v=([-\d]+),([-\d]+)', line)
+        robots.append(Robot(*(int(match[n]) for n in (2, 1, 4, 3))))
+    return robots
+
+robots = get_robots(data)
 print(robots)
 draw_map(robots)
 
@@ -77,6 +85,29 @@ print(list(robots_per_quadrant.values()))
 
 print('*** part 1:', math.prod(robots_per_quadrant.values()))
 
+answer = None
+robots = get_robots(data)
+threshold = int((size_r + size_c) * 0.87)
+if len(data) > 100:
+    for n in range(1, 20_000):
+        rows = set()
+        cols = set()
+        for robot in robots:
+            robot.move()
+            rows.add(robot.r)
+            cols.add(robot.c)
+        special = (len(rows) + len(cols)) <= threshold
+        if (
+            n < 10 or n % 10000 == 0
+            or len(rows)*10 < size_r*9
+            or len(cols)*10 < size_c*9
+            or special
+        ):
+            print(n)
+            print(f'{len(rows)=} {len(cols)=} {threshold=}')
+            draw_map(robots, color_quadrants=False)
+        if special:
+            answer = n
+            break
 
-
-print('*** part 2:', ...)
+print('*** part 2:', answer)
