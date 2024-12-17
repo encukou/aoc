@@ -1,0 +1,11 @@
+Program: Asm:   Py:                    Simplify:
+-------- -----  ---------------------- -------------------
+                while True:            while True:
+2,4      bst 4      B = A % 8              B = (A % 8) ^ 5
+1,5      bxl 5      B = B ^ 5
+7,5      cdv 5      C = A // (2 ** B)      C = A // (2 ** B)
+0,3      adv 3      A = A // (2 ** 3)      A = A // 8
+4,1      bxc 4      B = B ^ C              B = B ^ C ^ 6
+1,6      bxl 6      B = B ^ 6
+5,5      out 5      output(B)              output(B)
+3,0      jnz 0      if not A: break        if not A: break
