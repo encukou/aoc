@@ -10,6 +10,7 @@ DIRS = {
     'v': (1, 0),
     '^': (-1, 0),
 }
+DIR_CHARS = {v:k for k, v in DIRS.items()}
 
 if len(data) < 50:
     size = 7
@@ -33,24 +34,38 @@ def draw_map(memspace):
 draw_map(memspace)
 
 def find_path(memspace, initial=(0, 0), target=(size-1, size-1)):
-    visited = set()
-    to_visit = collections.deque([(*initial, 0)])
+    visited = {}
+    to_visit = collections.deque([(initial, 0, None)])
     while to_visit:
-        r, c, steps = to_visit.popleft()
-        if (r, c) == target:
-            return steps
-        if (r, c) not in memspace:
+        pos, steps, direction = to_visit.popleft()
+        if pos == target:
+            return steps, visited
+        if pos not in memspace:
             continue
-        if (r, c) in visited:
+        if pos in visited:
             continue
-        visited.add((r, c))
-        for dr, dc in DIRS.values():
-            to_visit.append((r+dr, c+dc, steps+1))
+        visited[pos] = direction
+        r, c = pos
+        for direction in DIRS.values():
+            dr, dc = direction
+            to_visit.append(((r+dr, c+dc), steps+1, direction))
+    return None, None
 
+steps, visited = find_path(memspace)
 
-print('*** part 1:', find_path(memspace))
+print('*** part 1:', steps)
 
+memspace = {(r, c) for r in range(size) for c in range(size)}
+for n, line in enumerate(data):
+    c, r = line.split(',')
+    pos = int(c), int(r)
+    memspace.remove(pos)
+    if pos in visited:
+        print(n, line, '!', flush=True)
+        steps, visited = find_path(memspace)
+    else:
+        print(n, line)
+    if steps is None:
+        break
 
-
-
-print('*** part 2:', ...)
+print('*** part 2:', line)
