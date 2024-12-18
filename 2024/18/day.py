@@ -23,14 +23,33 @@ memspace = {(r, c) for r in range(size) for c in range(size)}
 for line in data[:time]:
     c, r = line.split(',')
     memspace.remove((int(c), int(r)))
-def draw_map(memspace, path=None):
-    path = set(path or ())
-    for c in range(size):
-        for r in range(size):
-            if (r, c) in path:
-                print(end='O')
-            elif (r, c) in memspace:
-                print(end='.')
+def draw_map(memspace, path=[]):
+    path_symbols = {}
+    for (r, c), (pr, pc), (nr, nc) in zip(path, path[:1]+path, path[1:]+path[-1:]):
+        dirs = sorted([(pr-r, pc-c), (nr-r, nc-c)])
+        match dirs:
+            case ( 0, -1), ( 0,  0): symbol = '╴'
+            case (-1,  0), ( 0,  0): symbol = '╵'
+            case ( 0,  0), ( 1,  0): symbol = '╷'
+            case ( 0,  0), ( 0,  1): symbol = '╶'
+
+            case ( 0, -1), ( 0,  1): symbol = '─'
+            case (-1,  0), ( 1,  0): symbol = '│'
+
+            case (-1,  0), ( 0,  1): symbol = '╰'
+            case (-1,  0), ( 0, -1): symbol = '╯'
+            case ( 0, -1), ( 1,  0): symbol = '╮'
+            case ( 0,  1), ( 1,  0): symbol = '╭'
+            case _:
+                raise ValueError(dirs)
+        path_symbols[r, c] = symbol
+    for r in range(size):
+        for c in range(size):
+            pos = r, c
+            if symbol := path_symbols.get(pos):
+                print(end=symbol)
+            elif pos in memspace:
+                print(end='·')
             else:
                 print(end='▒')
         print()
@@ -70,23 +89,24 @@ def reconstruct_path(visited, target=(size-1, size-1)):
 steps, visited = find_path(memspace)
 path = reconstruct_path(visited)
 
+print('path:')
 draw_map(memspace, path)
 
 print('*** part 1:', steps)
 
-path = set(path)
+path_set = set(path)
 memspace = {(r, c) for r in range(size) for c in range(size)}
 for n, line in enumerate(data):
     c, r = line.split(',')
     pos = int(c), int(r)
     memspace.remove(pos)
-    if pos in path:
+    if pos in path_set:
         print(n, line, '!', flush=True)
         steps, visited = find_path(memspace)
         if steps is None:
             break
         path = reconstruct_path(visited)
-        path = set(path)
+        path_set = set(path)
         draw_map(memspace, path)
     else:
         print(n, line)
