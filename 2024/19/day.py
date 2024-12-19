@@ -1,32 +1,32 @@
+import functools
 import sys
 
 data = sys.stdin.read().splitlines()
 print(data)
 
-def can_make(target, available_designs):
+@functools.lru_cache
+def num_possibilities(target, available_designs):
     if not target:
-        return True
+        return 1
+    num_ways = 0
     for design in available_designs:
         if target.startswith(design):
-            can = can_make(target[len(design):], available_designs)
-            if can:
-                return True
-    return False
+            rest = target[len(design):]
+            num_ways += num_possibilities(rest, available_designs)
+    return num_ways
 
-available_designs = data[0].split(', ')
+available_designs = tuple(data[0].split(', '))
 assert not data[1]
 
-total = 0
+num_possible_designs = 0
+total_ways = 0
 for line in data[2:]:
-    can = can_make(line, available_designs)
-    if can:
-        total += 1
-    print(line, can, total)
+    num_ways = num_possibilities(line, available_designs)
+    if num_ways:
+        num_possible_designs += 1
+    total_ways += num_ways
+    print(line, num_ways, num_ways, total_ways)
 
 
-print('*** part 1:', total)
-
-
-
-
-print('*** part 2:', ...)
+print('*** part 1:', num_possible_designs)
+print('*** part 2:', total_ways)
