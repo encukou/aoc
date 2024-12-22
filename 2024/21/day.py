@@ -1,5 +1,5 @@
 import collections
-from functools import cached_property
+from functools import cache
 import sys
 
 data = sys.stdin.read().splitlines()
@@ -29,7 +29,7 @@ class Keyboard:
         except KeyError:
             self.init_paths_from(a)
             path = self.paths[a, b]
-        print(f'{a!r}→{b!r}: {path!r}')
+            print(f'{a!r}→{b!r}: {path!r}')
         return path
 
     def init_paths_from(self, a):
@@ -50,74 +50,52 @@ class Keyboard:
             paths.append(path_A)
             print(f' - {a!r}→{b!r}: {path_A!r}')
             for char, (dr, dc) in DIRS.items():
+                if char in path.rstrip(char):
+                    continue
                 heads.append((r+dr, c+dc, path+char))
 
-class Keypad:
-    def score(self, door_code):
-        number = int(door_code.strip('A'))
-        total_path = ''
-        for a, b in zip('A' + door_code, door_code):
-            paths = list(self.get_paths(a, b))
-            path = paths[0]
-            self.print(paths)
-            total_path += path
-        total_length = len(total_path)
-        score = number * total_length
-        self.print(f'{door_code}: {total_length} * {number} = {score} ({total_path})')
-        return score
 
-    def wrap(self):
-        return DirKeypad(self)
+door_keyboard = Keyboard('789', '456', '123', ' 0A')
+dir_keyboard = Keyboard(' ^A', '<v>')
 
-    def print(self, *args, **kwargs):
-        print(('░ ' * self.level).strip(), *args, **kwargs)
-
-class DoorKeypad(Keypad):
-    level = 0
-    keyboard = Keyboard('789', '456', '123', ' 0A')
-
-    def get_paths(self, door_a, door_b):
-        return self.keyboard.get_paths(door_a, door_b)
-
-class DirKeypad(Keypad):
-    keyboard = Keyboard(' ^A', '<v>')
-    def __init__(self, next_keypad):
-        self.next_keypad = next_keypad
-        self.level = next_keypad.level + 1
-
-    def get_paths(self, door_a, door_b):
-        paths = list(self._get_paths(door_a, door_b))
-        min_length = min(len(p) for p in paths)
-        return [p for p in paths if len(p) == min_length]
-
-    def _get_paths(self, door_a, door_b):
-        if door_a == door_b:
-            yield 'A'
-        for next_path in self.next_keypad.get_paths(door_a, door_b):
-            yield from self.get_my_paths('A' + next_path)
-
-    def get_my_paths(self, next_path):
-        if next_path == 'A':
-            yield ''
-            return
-        self.print(f'Recursing for: {next_path}')
-        nexts = list(self.get_my_paths(next_path[1:]))
-        self.print(f'Finding possibilities for: {next_path}')
-        for p in self.keyboard.get_paths(next_path[0], next_path[1]):
-            for nxt in nexts:
-                self.print(f'possibility for {next_path}: {p}{nxt}')
-                yield p + nxt
-
-keypad = DoorKeypad()
-keypad = keypad.wrap()
-keypad = keypad.wrap()
-total = 0
-for line in data:
-    total += keypad.score(line)
-
-print('*** part 1:', total)
+@cache
+def solve(code, chain_length, keyboard=dir_keyboard):
+    if chain_length == 0:
+        return len(code)
+    result = 0
+    log = []
+    for a, b in zip('A' + code, code):
+        paths = keyboard.get_paths(a, b)
+        costs = [
+            solve(path, chain_length-1)
+            for path in paths
+        ]
+        log.append(tuple(zip(paths, costs)))
+        result += min(costs)
+    print(f'{chain_length} keyboards away, {code!r} needs {result} presses:')
+    for press, step in zip(code, log):
+        def fpc(path, cost):
+            return f'{path!r} ({cost} presses)'
+        if len(step) == 1:
+            [path_cost] = step
+            print(f'- for {press!r}: {fpc(*path_cost)}')
+        else:
+            print(f'- for {press!r}, use the shortest of:')
+            for path_cost in step:
+                print(f'  - {fpc(*path_cost)}')
+    return result
 
 
+def get_answer(chain_length):
+    total = 0
+    for line in data:
+        length = solve(line, chain_length+1, door_keyboard)
+        num = int(line.strip('A'))
+        score = length * num
+        print(f'{line}: {length} * {num} = {score}')
+        total += score
+    return total
 
 
-print('*** part 2:', ...)
+print('*** part 1:', get_answer(2))
+print('*** part 2:', get_answer(25))
