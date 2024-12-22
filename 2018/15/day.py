@@ -15,12 +15,15 @@ DIRS = {
     'v': (1, 0),
 }
 
+GOBLIN_STRENGTH = 3
+
 @dataclasses.dataclass
 class Unit:
     r: int
     c: int
     team: str
     name: str
+    strength: int
     hp: int = 200
 
     @property
@@ -50,6 +53,8 @@ class Cave:
     turn_number: int = 0
     verbose: bool = True
     end: int = None
+
+    quiet: bool = False
 
     def draw(self):
         print(f'{'':3}|', end=RESET)
@@ -156,6 +161,7 @@ class Cave:
                     team = next(iter(self.units.values())).team
                     print(f'{team} win with {self.remainig_hp} total hit points left')
                     print(f'Outcome: {self.get_score()}')
+                    print(f'Kills: {self.team_kills}')
                 sq = choose_square(unit)
                 if verbose:
                     print(f'   - {sq=}')
@@ -171,23 +177,25 @@ class Cave:
                 if verbose:
                     print(f'   - {enemy=}')
             if enemy:
-                self.hit(enemy)
+                self.hit(unit, enemy)
                 attacks += 1
                 if enemy.hp <= 0:
                     kills += 1
         self.turn_number += 1
         print(f'{self.turn_number}: {moves=} {attacks=} {kills=}')
-        self.verbose = moves or kills or any(u.hp < 20 for u in self.units.values())
+        if not self.quiet:
+            self.verbose = moves or kills or any(u.hp < 20 for u in self.units.values())
         if self.verbose:
             self.draw()
-            print(f'Turn {self.turn_number+1} to start.')
+            print(f'Turn {self.turn_number+1} to start.', flush=True)
         return moves, attacks, kills
 
-    def hit(self, unit):
-        unit.hp -= 3
-        if unit.hp <= 0:
-            pos = unit.r, unit.c
+    def hit(self, attacker, defender):
+        defender.hp -= attacker.strength
+        if defender.hp <= 0:
+            pos = defender.r, defender.c
             self.units.pop(pos, None)
+            self.team_kills.add(defender.team)
 
     def move_unit(self, unit, new_pos):
         assert new_pos not in self.units
@@ -200,32 +208,65 @@ class Cave:
     def get_score(self):
         return self.end * self.remainig_hp
 
-def outcome(data):
-    next_name = iter(
-        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789').__next__
-    cave = Cave(set(), len(data), len(data[0]), {})
-    for r, line in enumerate(data):
-        for c, char in enumerate(line):
-            pos = r, c
-            match char:
-                case '#':
-                    cave.walls.add(pos)
-                case 'G' | 'E':
-                    cave.units[pos] = Unit(r, c, char, next_name())
-                case '.':
-                    pass
-                case _:
-                    raise ValueError(char)
-    cave.draw()
-    while cave.end is None:
-        moves, attacks, kills = cave.step()
-    cave.draw()
-    return cave.get_score()
+    @classmethod
+    def from_data(cls, data, elf_strength=GOBLIN_STRENGTH, quiet=False):
+        next_name = iter(
+            'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+        ).__next__
+        self = cls(set(), len(data), len(data[0]), {}, quiet=quiet)
+        for r, line in enumerate(data):
+            for c, char in enumerate(line):
+                pos = r, c
+                match char:
+                    case '#':
+                        self.walls.add(pos)
+                    case 'G':
+                        self.units[pos] = Unit(
+                            r, c, char, next_name(), GOBLIN_STRENGTH)
+                    case 'E':
+                        self.units[pos] = Unit(
+                            r, c, char, next_name(), elf_strength)
+                    case '.':
+                        pass
+                    case _:
+                        raise ValueError(char)
+        self.team_kills = set()
+        return self
 
-print('*** part 1:', outcome(data))
+    def simulate(self):
+        self.verbose = not self.quiet
+        self.draw()
+        while self.end is None:
+            self.step()
+        self.draw()
+
+def solve(data):
+    cave = Cave.from_data(data, elf_strength=3)
+    cave.simulate()
+    part1_score = cave.get_score()
+
+    low = 1
+    high = 200
+    while low < high-1:
+        mid = (low + high) // 2
+        cave = Cave.from_data(data, elf_strength=mid)
+        cave.simulate()
+        elves_died = 'E' in cave.team_kills
+        summary = 'some died' if elves_died else 'survived'
+        print(f'Elves had {mid} attack and {summary}. Checking {low}-{high}.')
+        if elves_died:
+            low = mid
+        else:
+            high = mid
+            part2_score = cave.get_score()
+
+    print(f'Elves need {high} attack for score of {part2_score}')
+    return part1_score, part2_score
+
+print('*** part 1:', solve(data)[0])
 
 if len(data) < 10:
-    assert outcome(dedent("""
+    assert solve(dedent("""
     #######
     #G..#E#
     #E#E.E#
@@ -233,8 +274,8 @@ if len(data) < 10:
     #...#E#
     #...E.#
     #######
-    """).strip().splitlines()) == 36334
-    assert outcome(dedent("""
+    """).strip().splitlines())[0] == 36334
+    assert solve(dedent("""
     #######
     #E..EG#
     #.#G.E#
@@ -242,8 +283,8 @@ if len(data) < 10:
     #G..#.#
     #..E#.#
     #######
-    """).strip().splitlines()) == 39514
-    assert outcome(dedent("""
+    """).strip().splitlines()) == (39514, 31284)
+    assert solve(dedent("""
     #######
     #.E...#
     #.#..G#
@@ -251,8 +292,8 @@ if len(data) < 10:
     #E#G#G#
     #...#G#
     #######
-    """).strip().splitlines()) == 28944
-    assert outcome(dedent("""
+    """).strip().splitlines()) == (28944, 6474)
+    assert solve(dedent("""
     #########
     #G......#
     #.E.#...#
@@ -262,9 +303,9 @@ if len(data) < 10:
     #.G...G.#
     #.....G.#
     #########
-    """).strip().splitlines()) == 18740
+    """).strip().splitlines()) == (18740, 1140)
 
 
 
 
-print('*** part 2:', ...)
+print('*** part 2:', solve(data)[1])
