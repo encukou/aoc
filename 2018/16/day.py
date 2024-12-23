@@ -4,6 +4,7 @@ import operator
 
 samples, testprog = sys.stdin.read().split('\n\n\n', 1)
 samples = samples.splitlines()
+testprog = testprog.strip().splitlines()
 print(samples)
 
 opcodes = []
@@ -57,35 +58,6 @@ for op_name, op_func in {
 print(opcodes, len(opcodes))
 assert len(opcodes) == 16
 
-def assign_possibilities(data):
-    opcode_possibilities = {i: set(opcodes) for i in range(16)}
-    for line in data:
-        name, sep, payload = line.partition(':')
-        if name == 'Before':
-            before = literal_eval(payload)
-        elif sep == '':
-            instruction = [int(n) for n in line.split()]
-        elif name == 'After':
-            want = literal_eval(payload)
-            inst, a, b, c = instruction
-            possibilities = opcode_possibilities[inst]
-            new_possibilities = set()
-            for func in possibilities:
-                registers = list(before)
-                func(registers, a, b, c)
-                eq_sym = '==' if registers == want else '!='
-                print(f'{before} --{func.__name__}({a}, {b}, {c})-> {registers} {eq_sym} {want}')
-                if registers == want:
-                    new_possibilities.add(func)
-            opcode_possibilities[inst] = new_possibilities
-            del before
-            del instruction
-        else:
-            raise ValueError(line)
-    for num, possibilities in opcode_possibilities.items():
-        print(f'{num}: {len(possibilities)}: {'/'.join(f.__name__ for f in possibilities)}')
-    return opcode_possibilities
-
 def try_samples(data):
     result = 0
     for line in data:
@@ -119,5 +91,60 @@ def try_samples(data):
 print('*** part 1:', try_samples(samples))
 
 
+def assign_opcodes(data):
+    opcode_possibilities = {i: set(opcodes) for i in range(16)}
+    for line in data:
+        name, sep, payload = line.partition(':')
+        if name == 'Before':
+            before = literal_eval(payload)
+        elif sep == '':
+            instruction = [int(n) for n in line.split()]
+        elif name == 'After':
+            want = literal_eval(payload)
+            inst, a, b, c = instruction
+            possibilities = opcode_possibilities[inst]
+            new_possibilities = set()
+            for func in possibilities:
+                registers = list(before)
+                func(registers, a, b, c)
+                eq_sym = '==' if registers == want else '!='
+                print(f'{before} --{func.__name__}({a}, {b}, {c})-> {registers} {eq_sym} {want}')
+                if registers == want:
+                    new_possibilities.add(func)
+            opcode_possibilities[inst] = new_possibilities
+            del before
+            del instruction
+        else:
+            raise ValueError(line)
+    assignments = {}
+    assigned = set()
+    go_on = True
+    while go_on:
+        go_on = False
+        for num, possibilities in opcode_possibilities.items():
+            print(f'{num}: {len(possibilities)}: {'/'.join(
+                    f.__name__ for f in possibilities)}')
+        for number, possibilities in sorted(
+            opcode_possibilities.items(), key=lambda n_p: len(n_p[-1])
+        ):
+            remaining = possibilities - assigned
+            if len(remaining) == 1:
+                [func] = remaining
+                assigned.add(func)
+                assignments[number] = func
+                del opcode_possibilities[number]
+                go_on = True
+        print('---')
+        for num, func in sorted(assignments.items()):
+            print(f'{num}: {func.__name__}')
 
-print('*** part 2:', ...)
+    return assignments
+
+opcodes = assign_opcodes(samples)
+registers = [0, 0, 0, 0]
+for line in testprog:
+    inst, a, b, c = [int(n) for n in line.split()]
+    print(registers, line, opcodes[inst].__name__)
+    opcodes[inst](registers, a, b, c)
+
+print('*** part 2:', registers[0])
