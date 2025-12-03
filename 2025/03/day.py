@@ -7,29 +7,19 @@ def key(entry):
     i, digit = entry
     return digit, -i
 
-total = 0
-for line in data:
-    enumerated = list(enumerate(line))
-    first_index, first_digit = max(enumerated[:-1], key=key)
-    second_index, second_digit = max(enumerated[int(first_index) + 1:], key=key)
-    print(line, first_digit, second_digit)
-    total += int(first_digit + second_digit)
+def solve(num_batteries):
+    total = 0
+    for line in data:
+        enumerated = list(enumerate(line))
+        digits = []
+        index = -1
+        for n in reversed(range(num_batteries)):
+            index, digit = max(enumerated[index+1:len(line)-n], key=key)
+            digits.append(digit)
+        joltage = int(''.join(digits))
+        print(f'{line} → {joltage}')
+        total += joltage
+    return total
 
-
-print('*** part 1:', total)
-
-
-num_batteries = 12
-total = 0
-for line in data:
-    enumerated = list(enumerate(line))
-    digits = []
-    index = -1
-    for end in range(len(line) - num_batteries, len(line)):
-        index, digit = max(enumerated[index+1:end+1], key=key)
-        digits.append(digit)
-        print(index, digit)
-    print(line, digits)
-    total += int(''.join(digits))
-
-print('*** part 2:', total)
+print('*** part 1:', solve(2))
+print('*** part 2:', solve(12))
