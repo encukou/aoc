@@ -19,6 +19,17 @@ for line in data:
 print('*** part 1:', total)
 
 
+num_batteries = 12
+total = 0
+for line in data:
+    enumerated = list(enumerate(line))
+    digits = []
+    index = -1
+    for end in range(len(line) - num_batteries, len(line)):
+        index, digit = max(enumerated[index+1:end+1], key=key)
+        digits.append(digit)
+        print(index, digit)
+    print(line, digits)
+    total += int(''.join(digits))
 
-
-print('*** part 2:', ...)
+print('*** part 2:', total)
