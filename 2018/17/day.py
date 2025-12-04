@@ -222,4 +222,4 @@ draw_map()
 
 print('*** part 1:', len(wet))
 
-print('*** part 2:', ...)
+print('*** part 2:', list(ground.values()).count(State.STILL))
