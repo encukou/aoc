@@ -25,7 +25,18 @@ for line in it:
 
 print('*** part 1:', total)
 
+ranges.sort(key=lambda r: r.start)
+index = 0
+while index < len(ranges)-1:
+    a = ranges[index]
+    b = ranges[index+1]
+    if b.start < a.stop:
+        ranges[index] = range(a.start, max(a.stop, b.stop))
+        del ranges[index+1]
+    else:
+        index += 1
 
 
+print(ranges)
 
-print('*** part 2:', ...)
+print('*** part 2:', sum(len(r) for r in ranges))
