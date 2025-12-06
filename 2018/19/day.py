@@ -69,6 +69,7 @@ for line in data:
 pprint.pp(instructions)
 
 def run(*registers):
+    R = [*registers]
     registers = [*registers, *([0] * 6)][:6]
     ip = 0
     tick = 0
@@ -81,12 +82,23 @@ def run(*registers):
             break
         registers[ip_reg] = ip
         opcodes[instruction[0]](registers, *instruction[1:])
-        if tick < 1000 or (tick % 10000) == 0:
-            print(f'{tick}. ip={ip}', old_registers, *instruction, registers)
+        print(f'{tick}. ip={ip}', old_registers, *instruction, registers)
         tick += 1
         ip = registers[ip_reg] + 1
+
+        if ip == 1 and len(instructions) > 10:
+            # rewritten main loop
+            return sum_factors(registers[2])
+
     return registers[0]
 
+def sum_factors(r2):
+    total = 0
+    for r4 in range(1, r2+1):
+        if r2 % r4 == 0:
+            total += r4
+            print(f'{r4}/{r2}: {total}', flush=True)
+    return total
 
 print('*** part 1:', run())
 
@@ -117,6 +129,4 @@ for pos, (name, a, b, c) in enumerate(instructions):
     else:
         raise ValueError(name)
 
-
-
-print('*** part 2:', ...)
+print('*** part 2:', run(1))
