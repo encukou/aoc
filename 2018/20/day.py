@@ -116,4 +116,4 @@ print('*** part 1:', max(rooms.values()))
 
 
 
-print('*** part 2:', ...)
+print('*** part 2:', sum(v >= 1000 for v in rooms.values()))
