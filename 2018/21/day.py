@@ -67,7 +67,9 @@ for line in data:
             instr,
             *(int(a) for a in args),
         ))
-
+pprint.pp(instructions)
+if not instructions:
+    exit()
 
 reg_names = {i: f'r{i}' for i in range(7)}
 reg_names[ip_reg] = 'ip'
@@ -102,12 +104,23 @@ for pos, (name, a, b, c) in enumerate(instructions):
     else:
         raise ValueError(name)
 
+@opcode
+def opt17(regs, a, b, c):
+    regs[c] = regs[3] // 256 - 2
+assert instructions[17] == ('seti', 0, 5, 2)
+instructions[17] = ('opt17', 0, 5, 2)
+
 def run(*registers):
     R = [*registers]
     registers = [*registers, *([0] * 6)][:6]
     ip = 0
     tick = 0
+    seen = set()
     while True:
+        state = (ip, *registers)
+        if state in seen:
+            return 'loop'
+        seen.add(state)
         old_registers = registers
         try:
             instruction = instructions[ip]
@@ -116,20 +129,34 @@ def run(*registers):
             break
         registers[ip_reg] = ip
         opcodes[instruction[0]](registers, *instruction[1:])
-        print(f'{tick}. ip={ip}', old_registers, *instruction, registers)
+        #print(f'{tick}. ip={ip}', old_registers, *instruction, registers)
         tick += 1
         ip = registers[ip_reg] + 1
 
-class Get:
+class GetAll:
+    def __init__(self):
+        self.first = None
+        self.last = None
+        self.seen = set()
     def __eq__(self, other):
-        print('*** part 1:', other)
-        raise StopIteration()
+        if isinstance(other, int):
+            if other not in self.seen:
+                print(other, flush=True)
+                self.last = other
+                if self.first is None:
+                    self.first = other
+                self.seen.add(other)
+            else:
+                print(other, '(seen)')
+            return False
+        return True
+    def __hash__(self):
+        return 0
+    def __repr__(self):
+        return '<?>'
 
-try:
-    run(Get())
-except StopIteration:
-    pass
-
-
-
-print('*** part 2:', ...)
+getall = GetAll()
+run(getall)
+print('*** part 1:', getall.first)
+print('*** part 2:', getall.last)
+# 15792263 too high
