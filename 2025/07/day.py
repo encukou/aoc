@@ -1,3 +1,4 @@
+import collections
 import sys
 
 data = sys.stdin.read().splitlines()
@@ -21,7 +22,24 @@ for line in data[1:]:
 
 print('*** part 1:', total_splits)
 
+total_splits = 0
+beams = {i: 1 for i, c in enumerate(data[0]) if c == 'S'}
+for line in data[1:]:
+    for i, c in enumerate(line):
+        print(f'{beams.get(i, " "):2}', end='')
+    print()
+    for i, c in enumerate(line):
+        print(f'{c:2}', end='')
+    print()
+    splitters = {i for i, c in enumerate(line) if c == '^'}
+    total_splits += len(splits)
+    new_beams = collections.defaultdict(int)
+    for pos, count in beams.items():
+        if pos in splitters:
+            new_beams[pos-1] += count
+            new_beams[pos+1] += count
+        else:
+            new_beams[pos] += count
+    beams = new_beams
 
-
-
-print('*** part 2:', ...)
+print('*** part 2:', sum(beams.values()))
