@@ -27,7 +27,7 @@ subprocess.run(
         '-rccs', f"""
             echo Day {day_num:02}
             set -e -o pipefail
-            python day.py < smallinput.txt  2>&1 | python ../check.py expected.txt
+            SMALL=1 python day.py < smallinput.txt  2>&1 | python ../check.py expected.txt
             time python day.py < input.txt  2>&1 | python ../check.py
         """
     ],
