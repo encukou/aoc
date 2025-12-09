@@ -1,16 +1,9 @@
+import heapq
 import math
 import sys
 
 data = sys.stdin.read().splitlines()
 print(data)
-
-"""
-    The region at 0,0 (the mouth of the cave) has a geologic index of 0.
-    The region at the coordinates of the target has a geologic index of 0.
-    If the region's Y coordinate is 0, the geologic index is its X coordinate times 16807.
-    If the region's X coordinate is 0, the geologic index is its Y coordinate times 48271.
-    Otherwise, the region's geologic index is the result of multiplying the erosion levels of the regions at X-1,Y and X,Y-1.
-"""
 
 [d, depth], [t, target] = [line.split() for line in data]
 assert d == 'depth:'
@@ -45,6 +38,16 @@ for y in range(0, target_y+1):
 
 print('*** part 1:', sum(e % 3 for e in erosions.values()))
 
+allowed_gear = {
+    0: {'gear', 'torch'},
+    1: {'gear', 'neither'},
+    2: {'torch', 'neither'},
+}
 
-
-print('*** part 2:', ...)
+arrivals = []
+frontier = [(target_x + target_y, 0, 0, 0, 'torch')]
+while frontier:
+    score, x, y, minute, equipment = heapq.heappop(frontier)
+    if x == target_x and y == target_y:
+        print('*** part 2:', minute)
+        break
