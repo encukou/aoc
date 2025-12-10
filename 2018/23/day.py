@@ -1,4 +1,5 @@
 import dataclasses
+import functools
 import sys
 import re
 
@@ -13,6 +14,17 @@ class Bot:
     y: int
     z: int
     r: int
+
+    @functools.cached_property
+    def u(self): return +self.x +self.y -self.z
+    @functools.cached_property
+    def v(self): return +self.x -self.y +self.z
+    @functools.cached_property
+    def w(self): return -self.x +self.y +self.z
+
+    @classmethod
+    def from_uvw(cls, u, v, w):
+        return cls((u+v)//2, (u+w)//2, (v+w)//2)
 
 bots = []
 strongest = None
